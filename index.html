@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>IntelliDay - Aqlli Kun Tartibi & Shaxsiy Yordamchi</title>
+  
+  <!-- SEO & Meta Tags -->
+  <meta name="description" content="Kompyuter va telefon uchun zamonaviy, aqlli kun tartibi va shaxsiy AI yordamchisi. Rejalaringizni unutmang, vaqtingizni boshqaring va samaradorlikni oshiring.">
+  <meta name="theme-color" content="#0a0d14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IntelliDay">
+
+  <!-- Favicon & PWA Manifest -->
+  <link rel="icon" type="image/png" href="./assets/icon.png">
+  <link rel="apple-touch-icon" href="./assets/icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="./css/index.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/responsive.css">
+</head>
+<body>
+
+  <!-- Ambient Glowing Atmosphere -->
+  <div class="bg-ambient-orb orb-1"></div>
+  <div class="bg-ambient-orb orb-2"></div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div id="app">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="container header-inner">
+        <div class="brand-wrapper">
+          <img src="./assets/icon.png" alt="IntelliDay Logo" class="brand-logo-img">
+          <div class="brand-title-group">
+            <h1 class="gradient-text">IntelliDay</h1>
+            <div class="brand-subtitle">
+              <span class="pulse-dot"></span>
+              <span>Aqlli Kun Tartibi & Yordamchi</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="date-pill" id="current-date-pill">
+            📅 <span>Yuklanmoqda...</span>
+          </div>
+
+          <!-- User Profile & Auth Pill (Telegram Login / Quick Switch) -->
+          <div class="user-header-pill" id="user-header-pill" onclick="AuthManager.openLoginModal()" title="Profilni almashtirish / Tizimga kirish (Telegram yoki PIN)">
+            <div class="avatar-with-dot">
+              <span class="user-avatar" id="header-user-avatar">👑</span>
+              <span class="user-status-dot status-free" id="header-user-status-dot"></span>
+            </div>
+            <div class="user-header-meta">
+              <span class="user-header-name" id="header-user-name">Bosh Konstruktor</span>
+              <span class="user-role-badge head_constructor" id="header-user-badge">Boshliq</span>
+            </div>
+            <span class="user-switch-arrow">▾</span>
+          </div>
+
+          <!-- Real-Time Multi-Device Sync Badge -->
+          <div class="sync-status-badge status-syncing" id="sync-status-badge" onclick="Storage.checkServerAndSync()" title="Real-vaqt sinxronizatsiya holati">
+            <span class="sync-dot"></span>
+            <span class="sync-label">Sinxron</span>
+          </div>
+
+          <!-- Dual-Mode Switcher (Personal vs Corporate Atelier) -->
+          <button class="btn btn-secondary mode-toggle-pill" id="app-mode-toggle-btn" onclick="CorporateManager.toggleMode()" title="Shaxsiy va Modelxona rejimi o‘rtasida almashtirish">
+            🏢 <strong>Modelxona Rejimi</strong>
+          </button>
+
+          <button class="btn btn-secondary btn-text-hide" style="padding: 0.5rem 0.85rem; font-size: 0.85rem;" onclick="App.openPhoneModal()" title="Telefonda ochish (Wi-Fi)">
+            📱 <span class="btn-text-hide">Telefon</span>
+          </button>
+
+          <!-- Notification Bell Button & Dropdown Center -->
+          <div class="notif-bell-wrapper">
+            <button class="btn-icon" id="notif-bell-btn" title="Bildirishnomalar markazi" onclick="NotificationManager.toggleNotificationCenter()">
+              🔔
+              <span class="notif-badge" id="notif-bell-badge" style="display: none;">0</span>
+            </button>
+
+            <!-- Notification Center Dropdown -->
+            <div class="notif-dropdown" id="notification-center-dropdown">
+              <div class="notif-dropdown-header">
+                <span style="font-weight: 700; font-size: 0.92rem; color: #fff;">Bildirishnomalar</span>
+                <div style="display: flex; gap: 0.35rem;">
+                  <button type="button" class="chip-btn" onclick="NotificationManager.markAllAsRead()" title="Barchasini o‘qilgan deb belgilash" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;">✓ O‘qildi</button>
+                  <button type="button" class="chip-btn" onclick="NotificationManager.clearAllNotifications()" title="Tozalash" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;">🗑️</button>
+                </div>
+              </div>
+              <div class="notif-dropdown-list" id="notif-center-list">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <button id="pwa-install-btn" class="btn btn-primary btn-text-hide" style="display: none; padding: 0.5rem 0.9rem; font-size: 0.85rem;" onclick="App.installPWA()">
+            📲 <span class="btn-text-hide">O‘rnatish</span>
+          </button>
+
+          <button class="btn-icon" id="shortcuts-btn" title="Tezkor tugmalar (Hotkeys - ?)" onclick="App.openShortcutsModal()">
+            ⌨️
+          </button>
+
+          <button class="btn-icon" id="theme-toggle-btn" title="Mavzuni almashtirish" onclick="App.toggleTheme()">
+            🌙
+          </button>
+
+          <button class="btn-icon" id="settings-open-btn" title="Sozlamalar va Telegram" onclick="App.openSettingsModal()">
+            ⚙️
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Notification Permission Request Banner -->
+    <div class="notif-permission-banner" id="notif-permission-banner" style="display: none;">
+      <div class="container notif-banner-inner">
+        <div class="notif-banner-left">
+          <span style="font-size: 1.35rem;">🔔</span>
+          <div>
+            <strong>Eslatmalarni o‘tkazib yubormang!</strong>
+            <span style="display: block; font-size: 0.8rem; color: var(--text-secondary);">Vazifalaringiz o‘z vaqtida eslatib turilishi uchun brauzer bildirishnomalariga ruxsat bering.</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn btn-primary" onclick="NotificationManager.requestPermission()" style="padding: 0.35rem 0.85rem; font-size: 0.82rem; white-space: nowrap;">Ruxsat berish</button>
+          <button class="btn btn-secondary" onclick="NotificationManager.hidePermissionBanner()" style="padding: 0.35rem 0.65rem; font-size: 0.82rem;">Keyinroq</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="container">
+      
+      <!-- ================================================================== -->
+      <!-- PERSONAL MODE CONTAINER (Individual Schedule, Habits, Pomodoro)    -->
+      <!-- ================================================================== -->
+      <div id="personal-mode-container">
+
+        <!-- Worker Personal Perspective Dashboard (For Apprentice & Sample Tailor) -->
+        <div id="worker-personal-dashboard" style="display: none; margin-bottom: 1.5rem;"></div>
+
+        <!-- Hero Active Task Card -->
+      <section class="glass-card hero-active-card" id="hero-active-card">
+        <div class="active-card-top">
+          <span class="live-status-tag">
+            <span class="pulse-dot"></span>
+            Ayni Damdagi Holat
+          </span>
+          <div class="active-task-progress-bar">
+            <div class="active-task-progress-fill" id="active-task-progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="active-task-content">
+          <div class="active-task-info">
+            <h2 class="active-task-title" id="active-task-title">Rejalar yuklanmoqda...</h2>
+            <div class="active-task-meta" id="active-task-time">Hozirgi vaqt hisoblanmoqda</div>
+          </div>
+          <div class="active-task-timer">
+            <div class="countdown-display" id="active-task-countdown">--</div>
+            <div class="countdown-label" id="active-task-label">Qolgan vaqt</div>
+          </div>
+        </div>
+
+        <div class="active-task-actions" id="active-task-actions">
+          <!-- Populated by schedule.js -->
+        </div>
+      </section>
+
+      <!-- Overdue Tasks Smart Warning Banner -->
+      <div class="overdue-banner" id="overdue-banner" style="display: none;">
+        <div class="overdue-banner-text" id="overdue-text">
+          ⚠️ <strong>Rejangiz vaqti o‘tib ketdi.</strong> Nima qilamiz?
+        </div>
+        <div class="overdue-actions" id="overdue-action-btns">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- AI Smart Assistant Prompt Bar -->
+      <section class="ai-quick-bar">
+        <div class="ai-avatar-icon" title="Sun’iy intellekt yordamchisi (Chatni ochish)" onclick="App.openAIChatModal()" style="cursor: pointer;">
+          🤖
+        </div>
+        <div class="ai-input-wrapper">
+          <input 
+            type="text" 
+            id="ai-prompt-input" 
+            class="ai-text-input" 
+            placeholder="Yozing: masalan, 'Ertaga soat 10:00 da dars' yoki 'Bugungi kunimni tahlil qil'..."
+            autocomplete="off"
+          >
+        </div>
+        <button id="ai-mic-btn" class="ai-mic-btn" title="Ovozli kiritish (Mikrofon)" onclick="App.toggleVoiceInput()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <button class="btn btn-primary" style="padding: 0.6rem 1rem;" onclick="App.handleAIInput()">
+          Kiritish
+        </button>
+      </section>
+
+      <!-- AI Autopilot & Magic Toolbar -->
+      <div class="ai-autopilot-toolbar">
+        <button class="btn btn-secondary ai-tool-btn" onclick="App.runAIAutopilot()" title="Kechikkan va to‘qnashgan ishlarni avtomatik qayta taqsimlash">
+          🔄 <strong>AI Avtopilot</strong>
+        </button>
+        <button class="btn btn-secondary ai-tool-btn" onclick="App.openMagicPlanModal()" title="1 tugma bilan biologik soatga mos mukammal kun tartibini generatsiya qilish">
+          ✨ <strong>Sehrli Reja</strong>
+        </button>
+        <button class="btn btn-secondary ai-tool-btn" onclick="App.openAIChatModal()" title="Gemini & Aqlli AI bilan erkin muloqot va maslahatlar">
+          💬 <strong>AI Chat</strong>
+        </button>
+        <button class="btn btn-secondary ai-tool-btn" onclick="App.shiftRemainingToTomorrow()" title="Bugungi tugallanmagan ishlarni ertangi kunga surish">
+          🌙 <strong>Ertaga surish</strong>
+        </button>
+      </div>
+
+      <!-- Quick Action Prompt Chips -->
+      <div class="quick-prompt-chips">
+        <button class="chip-btn" onclick="App.handleAIInput('Bugungi kun tartibim qanday?')">⚡ Kun tartibim</button>
+        <button class="chip-btn" onclick="App.handleAIInput('Bugungi rejamni tahlil qilib maslahat ber')">💡 Tahlil & Maslahat</button>
+        <button class="chip-btn" onclick="App.handleAIInput('25 daqiqalik fokus sessiyasi boshla')">🎯 Fokus taymer</button>
+        <button class="chip-btn" onclick="App.handleAIInput('Ertaga soat 07:00 da yugurish')">🏃‍♂️ + Ertaga 07:00 Sport</button>
+        <button class="chip-btn" onclick="App.handleAIInput('Soat 15:00 da muhim hisobot')">💼 + 15:00 Hisobot</button>
+        <button class="chip-btn" onclick="App.handleAIInput('Qolib ketgan ishlar bormi?')">⚠️ Qolib ketganlar</button>
+      </div>
+
+      <!-- View Mode Segmented Controls (Day / Week / Month / Analytics) -->
+      <div class="view-mode-tabs-wrapper">
+        <div class="view-mode-tabs">
+          <button type="button" class="view-mode-btn active" data-view="day">
+            <span>📅 Kunlik Jadval</span>
+          </button>
+          <button type="button" class="view-mode-btn" data-view="week">
+            <span>📆 Haftalik</span>
+          </button>
+          <button type="button" class="view-mode-btn" data-view="month">
+            <span>🗓️ Oylik Kalendar</span>
+          </button>
+          <button type="button" class="view-mode-btn" data-view="analytics">
+            <span>📊 Tahlil & Statistika</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Grid: Schedule & Sidebar -->
+      <div class="dashboard-grid">
+        
+        <!-- Left Main Content Column -->
+        <div class="views-main-column">
+
+          <!-- Day View: Timeline -->
+          <div id="day-view-section">
+            <section class="glass-card timeline-card">
+              <div class="timeline-header">
+                <div class="timeline-date-nav">
+                  <button class="btn-icon" onclick="App.navigateDate(-1)" title="Oldingi kun">◀</button>
+                  <button class="btn btn-secondary" onclick="App.goToToday()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Bugun</button>
+                  <button class="btn-icon" onclick="App.navigateDate(1)" title="Keyingi kun">▶</button>
+                  <strong id="timeline-header-date" style="margin-left: 0.5rem; font-size: 1.05rem;">Bugun</strong>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <button class="btn btn-secondary btn-text-hide" onclick="App.printSchedule()" title="Kun tartibini chop etish yoki PDF (Ctrl+P)" style="font-size: 0.85rem; padding: 0.45rem 0.85rem;">
+                    🖨️ <span class="btn-text-hide">Chop etish</span>
+                  </button>
+                  <button class="btn btn-primary" onclick="App.openAddTaskModal()" style="font-size: 0.85rem; padding: 0.45rem 0.95rem;">
+                    + Yangi Vazifa
+                  </button>
+                </div>
+              </div>
+
+              <!-- Timeline Filter Chips Bar -->
+              <div class="timeline-filter-bar">
+                <button class="chip-btn timeline-filter-btn active" data-filter="all" onclick="Schedule.setFilter('all')">Barchasi</button>
+                <button class="chip-btn timeline-filter-btn" data-filter="work" onclick="Schedule.setFilter('work')">💼 Ish</button>
+                <button class="chip-btn timeline-filter-btn" data-filter="study" onclick="Schedule.setFilter('study')">📚 Ta’lim</button>
+                <button class="chip-btn timeline-filter-btn" data-filter="sport" onclick="Schedule.setFilter('sport')">🏃‍♂️ Sport</button>
+                <button class="chip-btn timeline-filter-btn" data-filter="personal" onclick="Schedule.setFilter('personal')">🧘 Shaxsiy</button>
+                <button class="chip-btn timeline-filter-btn" data-filter="pending" onclick="Schedule.setFilter('pending')">⏳ Bajarilmagan</button>
+              </div>
+
+              <!-- Timeline slots with current time laser needle -->
+              <div class="timeline-scroll-container">
+                <div class="current-time-needle" id="current-time-needle"></div>
+                <div id="timeline-slots">
+                  <!-- Rendered by schedule.js -->
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Week View: 7 Interactive Day Columns -->
+          <div id="week-view-section" style="display: none;">
+            <div class="week-view-wrapper">
+              <div class="week-nav-bar glass-card">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <button class="btn-icon" onclick="ViewsManager.navigateWeek(-1)" title="Oldingi hafta">◀</button>
+                  <button class="btn btn-secondary" onclick="ViewsManager.navigateWeek(0)" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;">Bu hafta</button>
+                  <button class="btn-icon" onclick="ViewsManager.navigateWeek(1)" title="Keyingi hafta">▶</button>
+                  <strong id="week-view-title" style="margin-left: 0.5rem; font-size: 1rem; color: #fff;">Hafta yuklanmoqda...</strong>
+                </div>
+                <button class="btn btn-primary" onclick="App.openAddTaskModal()" style="font-size: 0.82rem; padding: 0.4rem 0.85rem;">
+                  + Yangi Vazifa
+                </button>
+              </div>
+              <div id="week-view-content"></div>
+            </div>
+          </div>
+
+          <!-- Month View: Full Calendar Grid -->
+          <div id="month-view-section" style="display: none;">
+            <div class="month-view-wrapper">
+              <div class="week-nav-bar glass-card">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <button class="btn-icon" onclick="ViewsManager.navigateMonth(-1)" title="Oldingi oy">◀</button>
+                  <button class="btn btn-secondary" onclick="ViewsManager.navigateMonth(0)" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;">Bu oy</button>
+                  <button class="btn-icon" onclick="ViewsManager.navigateMonth(1)" title="Keyingi oy">▶</button>
+                  <strong id="month-view-title" style="margin-left: 0.5rem; font-size: 1.05rem; color: #fff;">Oy yuklanmoqda...</strong>
+                </div>
+                <button class="btn btn-primary" onclick="App.openAddTaskModal()" style="font-size: 0.82rem; padding: 0.4rem 0.85rem;">
+                  + Yangi Vazifa
+                </button>
+              </div>
+              <div id="month-view-content"></div>
+            </div>
+          </div>
+
+          <!-- Analytics Dashboard View -->
+          <div id="analytics-view-section" style="display: none;">
+            <div id="analytics-view-content"></div>
+          </div>
+
+        </div>
+
+        <!-- Right: Productivity Widgets & Habits -->
+        <aside class="sidebar-column">
+          
+          <!-- Productivity Score Circle -->
+          <div class="glass-card score-widget">
+            <h3>Kunlik Samaradorlik</h3>
+            
+            <div class="score-circle-wrapper">
+              <svg class="score-circle-svg" viewBox="0 0 120 120">
+                <defs>
+                  <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4" />
+                    <stop offset="50%" stop-color="#6366f1" />
+                    <stop offset="100%" stop-color="#10b981" />
+                  </linearGradient>
+                </defs>
+                <circle class="score-bg-circle" cx="60" cy="60" r="54" />
+                <circle class="score-progress-circle" id="score-progress-circle" cx="60" cy="60" r="54" />
+              </svg>
+              <div class="score-number-display">
+                <span class="score-percent" id="score-percent">0%</span>
+                <span class="score-sublabel">Natija</span>
+              </div>
+            </div>
+
+            <div class="score-stats-grid">
+              <div class="stat-box">
+                <div class="stat-value" id="stat-done-tasks">0 / 0</div>
+                <div class="stat-name">Bajarilgan vazifalar</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-done-habits">0 / 0</div>
+                <div class="stat-name">Bajarilgan odatlar</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Coaching Advice Box -->
+          <div class="glass-card ai-coach-card">
+            <div class="coach-header">
+              <span>🤖</span>
+              <span>Aqlli Yordamchi Maslahati</span>
+            </div>
+            <p class="coach-message" id="ai-coach-message">
+              Kunlik rejalaringiz tahlil qilinmoqda...
+            </p>
+          </div>
+
+          <!-- Daily Habits Tracker -->
+          <div class="glass-card habits-widget" id="habits-widget">
+            <div class="widget-title-row">
+              <h3>Kunlik Odatlar</h3>
+              <button class="btn btn-secondary" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;" onclick="App.openAddHabitModal()" title="Yangi odat qo‘shish (H)">+ Odat</button>
+            </div>
+            <div class="habit-list" id="habit-list">
+              <!-- Rendered by habits.js -->
+            </div>
+          </div>
+
+        </aside>
+      </div>
+      </div> <!-- End of personal-mode-container -->
+
+      <!-- ================================================================== -->
+      <!-- CORPORATE ATELIER & CONSTRUCTION STUDIO MODE CONTAINER              -->
+      <!-- ================================================================== -->
+      <div id="corporate-mode-container" style="display: none;">
+        
+        <!-- Corporate Header Banner -->
+        <section class="glass-card corp-header-banner">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="font-size: 2.5rem; background: rgba(99,102,241,0.15); width: 64px; height: 64px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(99,102,241,0.3);">
+                👑
+              </div>
+              <div>
+                <span class="live-status-tag" style="margin-bottom: 0.35rem;">
+                  <span class="pulse-dot"></span>
+                  Modelxona & Bosh Konstruktor Markazi
+                </span>
+                <h2 style="margin: 0; font-size: 1.45rem; color: #fff;">Konstruktorlik & Namuna Tikish Tizimi</h2>
+                <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                  Yordamchi konstruktorlar (shogirdlar) va chevarlar uchun aqlli zakazlar navbati va aniq muddat hisoblagich
+                </span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-primary" onclick="CorporateManager.setTab('calculator')" style="padding: 0.6rem 1.1rem; font-size: 0.9rem;">
+                + Yangi Zakaz & Muddat Hisoblash
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- KPI Summary Row -->
+        <div class="analytics-kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon" style="color: var(--accent-cyan);">👗</div>
+            <div class="kpi-content">
+              <span class="kpi-title">Faol Zakazlar</span>
+              <div class="kpi-value" id="corp-kpi-active-orders">0 ta</div>
+              <span class="kpi-subtitle">Modelxonada jarayonda</span>
+            </div>
+          </div>
+
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon" style="color: var(--accent-indigo);">👥</div>
+            <div class="kpi-content">
+              <span class="kpi-title">Modelxona Xodimlari</span>
+              <div class="kpi-value" id="corp-kpi-team-busy">0 / 6</div>
+              <span class="kpi-subtitle">Konstruktor & Chevarlar</span>
+            </div>
+          </div>
+
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon" style="color: var(--accent-amber);">⏱️</div>
+            <div class="kpi-content">
+              <span class="kpi-title">O‘rtacha Tayyor Bo‘lish</span>
+              <div class="kpi-value" id="corp-kpi-avg-leadtime">2.5 kun</div>
+              <span class="kpi-subtitle">Bichish, andaza va tikish</span>
+            </div>
+          </div>
+
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon" style="color: var(--accent-emerald);">✅</div>
+            <div class="kpi-content">
+              <span class="kpi-title">Topshirilgan Namunalar</span>
+              <div class="kpi-value" id="corp-kpi-completed-orders">0 ta</div>
+              <span class="kpi-subtitle">Muvaffaqiyatli qabul</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Corporate Subtabs -->
+        <div class="corp-subtabs">
+          <button type="button" class="corp-subtab-btn active" data-tab="orders">
+            👗 Zakazlar & Namunalar
+          </button>
+          <button type="button" class="corp-subtab-btn" data-tab="calculator">
+            🧮 + Yangi Zakaz & Muddat Hisoblash
+          </button>
+          <button type="button" class="corp-subtab-btn" data-tab="team">
+            👥 Xodimlar Bandligi & Navbat
+          </button>
+          <button type="button" class="corp-subtab-btn" data-tab="worker">
+            👷‍♀️ Xodim Portali (Shogird/Chevar)
+          </button>
+        </div>
+
+        <!-- Subtab Content Sections -->
+        <div id="corp-orders-section">
+          <div id="corp-orders-list"></div>
+        </div>
+
+        <div id="corp-calc-section" style="display: none;">
+          <div id="corp-calculator-content"></div>
+        </div>
+
+        <div id="corp-team-section" style="display: none;">
+          <div id="corp-team-list"></div>
+        </div>
+
+        <div id="corp-worker-section" style="display: none;">
+          <div id="corp-worker-content"></div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Floating Action Button for mobile/desktop -->
+    <button class="fab-btn" id="fab-add-btn" title="Yangi reja qo‘shish (N)" onclick="App.openAddTaskModal()">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+      <button class="nav-item-btn active" data-tab="schedule" onclick="App.switchMobileTab('schedule')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Jadval</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="focus" onclick="App.switchMobileTab('focus')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Fokus</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="habits" onclick="App.switchMobileTab('habits')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <span>Odatlar</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="assistant" onclick="App.switchMobileTab('assistant')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Yordamchi</span>
+      </button>
+    </nav>
+
+    <!-- Modal: Add / Edit Task Form -->
+    <div class="modal-backdrop" id="task-modal">
+      <div class="modal-panel">
+        <button class="modal-close-btn" onclick="App.closeAddTaskModal()">✕</button>
+        <h2 id="task-modal-title" style="margin-bottom: 1.25rem;">Yangi Vazifa Qo‘shish</h2>
+        
+        <form onsubmit="App.saveTaskFromForm(event)">
+          <input type="hidden" id="task-form-id" value="">
+
+          <div class="form-group">
+            <label class="form-label">Vazifa Nomi</label>
+            <input type="text" id="task-form-title" class="form-input" placeholder="Masalan: Muhim hisobot tayyorlash" required autofocus>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Boshlanish Vaqti</label>
+              <input type="time" id="task-form-time" class="form-input" value="10:00" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Davomiyligi (daqiqa)</label>
+              <input type="number" id="task-form-duration" class="form-input" value="30" min="5" max="360" step="5" required>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Sana</label>
+              <input type="date" id="task-form-date" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Muhimlik darajasi</label>
+              <select id="task-form-priority" class="form-select">
+                <option value="medium">🟡 O‘rta (Oddiy)</option>
+                <option value="high">🔴 Yuqori (Shoshilinch)</option>
+                <option value="low">🟢 Qulay (Ixtiyoriy)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Category selection -->
+          <div class="form-group">
+            <label class="form-label">Kategoriya</label>
+            <div class="category-picker">
+              <input type="radio" id="cat-work" name="task-category" value="work" class="category-radio" checked>
+              <label for="cat-work" class="category-radio-label badge badge-work">💼 Ish</label>
+
+              <input type="radio" id="cat-study" name="task-category" value="study" class="category-radio">
+              <label for="cat-study" class="category-radio-label badge badge-study">📚 Ta’lim</label>
+
+              <input type="radio" id="cat-sport" name="task-category" value="sport" class="category-radio">
+              <label for="cat-sport" class="category-radio-label badge badge-sport">🏃‍♂️ Sport</label>
+
+              <input type="radio" id="cat-personal" name="task-category" value="personal" class="category-radio">
+              <label for="cat-personal" class="category-radio-label badge badge-personal">🧘 Shaxsiy</label>
+
+              <input type="radio" id="cat-meeting" name="task-category" value="meeting" class="category-radio">
+              <label for="cat-meeting" class="category-radio-label badge badge-meeting">👥 Uchrashuv</label>
+
+              <input type="radio" id="cat-health" name="task-category" value="health" class="category-radio">
+              <label for="cat-health" class="category-radio-label badge badge-health">🥗 Salomatlik</label>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+            <input type="checkbox" id="task-form-recurring" style="width: 18px; height: 18px; accent-color: var(--accent-indigo);">
+            <label for="task-form-recurring" style="font-size: 0.88rem; cursor: pointer;">Ushbu vazifani har kuni takrorlash</label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Qo‘shimcha eslatma (ixtiyoriy)</label>
+            <textarea id="task-form-notes" class="form-textarea" rows="2" placeholder="Kerakli manbalar, havolalar yoki eslatmalar..."></textarea>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="submit" id="task-modal-submit-btn" class="btn btn-primary" style="flex: 1;">Saqlash</button>
+            <button type="button" class="btn btn-secondary" onclick="App.closeAddTaskModal()">Bekor qilish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Pomodoro Focus Mode -->
+    <div class="modal-backdrop" id="pomodoro-modal">
+      <div class="modal-panel" style="text-align: center;">
+        <button class="modal-close-btn" onclick="Pomodoro.close()">✕</button>
+        <span class="live-status-tag" style="margin-bottom: 0.5rem;">🎯 Chuqur Diqqat Rejimi</span>
+        <h2>Fokus Taymeri</h2>
+
+        <!-- Modes switcher -->
+        <div class="pomo-modes" style="margin-top: 1rem;">
+          <button class="pomo-mode-btn active" data-mode="work" onclick="Pomodoro.setMode('work')">25m Fokus</button>
+          <button class="pomo-mode-btn" data-mode="shortBreak" onclick="Pomodoro.setMode('shortBreak')">5m Tanaffus</button>
+          <button class="pomo-mode-btn" data-mode="longBreak" onclick="Pomodoro.setMode('longBreak')">15m Katta tanaffus</button>
+        </div>
+
+        <!-- Big countdown -->
+        <div class="pomo-timer-display" id="pomo-display">25:00</div>
+
+        <!-- Controls -->
+        <div style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+          <button class="btn btn-primary" id="pomo-toggle-btn" onclick="Pomodoro.toggleTimer()" style="min-width: 140px;">
+            Fokusni boshlash
+          </button>
+          <button class="btn btn-secondary" onclick="Pomodoro.reset()">
+            Qayta boshlash
+          </button>
+        </div>
+
+        <!-- Ambient Sound Synthesizer Generator -->
+        <div class="pomo-sound-controls">
+          <span style="font-size: 0.85rem; color: var(--text-secondary);">Fon ovozi (Ambient):</span>
+          <div style="display: flex; gap: 0.4rem;">
+            <button class="sound-toggle-btn active" data-sound="none" onclick="Pomodoro.setAmbient('none')">O‘chirilgan</button>
+            <button class="sound-toggle-btn" data-sound="rain" onclick="Pomodoro.setAmbient('rain')">🌧️ Yomg‘ir</button>
+            <button class="sound-toggle-btn" data-sound="whitenoise" onclick="Pomodoro.setAmbient('whitenoise')">📻 Shovqin</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Settings & Telegram Integration -->
+    <div class="modal-backdrop" id="settings-modal">
+      <div class="modal-panel">
+        <button class="modal-close-btn" onclick="App.closeSettingsModal()">✕</button>
+        <h2 style="margin-bottom: 1.25rem;">Sozlamalar & Yordamchi</h2>
+
+        <form onsubmit="App.saveSettingsForm(event)">
+          
+          <h4 style="margin-bottom: 0.75rem; color: var(--accent-cyan);">Bildirishnomalar & Ovoz</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+            <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.92rem; cursor: pointer;">
+              <span>Brauzer bildirishnomalari (Push)</span>
+              <input type="checkbox" id="set-notif" style="width: 18px; height: 18px; accent-color: var(--accent-cyan);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.92rem; cursor: pointer;">
+              <span>Musiqali ohanglar (Web Audio)</span>
+              <input type="checkbox" id="set-sound" style="width: 18px; height: 18px; accent-color: var(--accent-cyan);">
+            </label>
+            <div style="display: flex; gap: 0.4rem; margin-top: 0.15rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="App.testSound('chime')">🔔 Chime</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="App.testSound('alarm')">⚡ Signal</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="App.testSound('bowl')">🧘 Zen bowl</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="App.testSound('success')">🎉 G‘alaba</button>
+            </div>
+            <div class="form-group" style="margin-top: 0.5rem;">
+              <label class="form-label" style="font-size: 0.82rem;">Eslatmalar uchun asosiy ohang</label>
+              <select id="set-sound-tone" class="form-select" style="font-size: 0.85rem; padding: 0.4rem 0.7rem;">
+                <option value="chime">🔔 Mayin Chime (Standart)</option>
+                <option value="alarm">⚡ Raqamli Signal</option>
+                <option value="bowl">🧘 Zen Singing Bowl</option>
+                <option value="success">🎉 G‘alaba Fanfarasi</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-secondary" style="width: 100%; font-size: 0.82rem; margin-top: 0.5rem;" onclick="NotificationManager.testFullNotification()">
+              🔔 Tizimni sinash (Ovoz + Push + Ekran)
+            </button>
+          </div>
+
+          <div class="settings-group-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; color: var(--accent-indigo); font-size: 1.05rem;">🤖 Telegram Bot & Guruhlar Boshqaruvi</h4>
+            <span class="badge" id="tg-bot-status-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">🟢 Faol</span>
+          </div>
+
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+            Telegram bot orqali Konstruktorlar va Modelxona guruhlariga yangi vazifalar, boshlanish va tayyor bo‘lish muddatlari (ETA) avtomatik yuboriladi hamda guruh a’zolari interaktiv tugmalar orqali ishlatadi.
+          </p>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" style="font-size: 0.85rem; font-weight: 600;">Telegram Bot Token (@BotFather dan):</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="password" id="set-tg-token" class="form-input" placeholder="Masalan: 123456789:ABCdefGhIjkLmNoPqRsTuVwXyZ" style="font-family: monospace;">
+              <button type="button" class="btn btn-secondary" onclick="App.toggleTokenVisibility()" id="btn-toggle-token" title="Ko‘rish">👁️</button>
+            </div>
+          </div>
+
+          <!-- Connected Telegram Groups Box -->
+          <div class="tg-groups-manager-box" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <strong style="color: #fff; font-size: 0.9rem;">👥 Ulangan Telegram Guruhlari:</strong>
+              <button type="button" class="chip-btn" onclick="App.refreshTelegramGroups()" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">🔄 Yangilash</button>
+            </div>
+
+            <!-- 1. Konstruktorlar guruhi -->
+            <div class="tg-group-row" style="background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">📐 1. Konstruktorlar Guruhi (Andaza & Shogirdlar)</span>
+                <span id="tg-status-constructor" class="badge" style="background: rgba(99,102,241,0.2); color: var(--accent-indigo); font-size: 0.72rem;">Tekshirilmoqda</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="text" id="set-tg-constructor-group" class="form-input" placeholder="Guruh ID (-100...)" style="font-size: 0.82rem; padding: 0.4rem 0.65rem;">
+                <button type="button" class="btn btn-secondary" onclick="App.testGroupMessage('constructor')" style="font-size: 0.78rem; white-space: nowrap; padding: 0.4rem 0.75rem;">
+                  🧪 Test vazifa tashlash
+                </button>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                Andaza, lekalolar, gradatsiya va bichuv topshiriqlari avtomatik shu guruhga tushadi.
+              </div>
+            </div>
+
+            <!-- 2. Modelxona guruhi -->
+            <div class="tg-group-row" style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-sm); padding: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🪡 2. Modelxona Guruhi (Etalon namuna & Chevarlar)</span>
+                <span id="tg-status-modelxona" class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-size: 0.72rem;">Tekshirilmoqda</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="text" id="set-tg-modelxona-group" class="form-input" placeholder="Guruh ID (-100...)" style="font-size: 0.82rem; padding: 0.4rem 0.65rem;">
+                <button type="button" class="btn btn-secondary" onclick="App.testGroupMessage('modelxona')" style="font-size: 0.78rem; white-space: nowrap; padding: 0.4rem 0.75rem;">
+                  🧪 Test vazifa tashlash
+                </button>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                Namuna tikish, montaj va kiyib ko‘rish (OTK) topshiriqlari avtomatik shu guruhga tushadi.
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Setup Guide -->
+          <div style="background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.25); border-radius: var(--radius-sm); padding: 0.85rem; font-size: 0.8rem; line-height: 1.55; margin-bottom: 1.25rem;">
+            <strong style="color: #fff;">💡 Guruhlarni ulash bo‘yicha 3 daqiqalik qo‘llanma:</strong><br>
+            1. Ochgan botingizni ikkala guruhga (Konstruktorlar va Modelxona) <b>Admin</b> qilib qo‘shing.<br>
+            2. Konstruktorlar guruhida <code>/set_konstruktor</code> deb yozing — bot guruhni avtomatik eslab qoladi.<br>
+            3. Modelxona guruhida <code>/set_modelxona</code> deb yozing — bot uni Modelxona guruhi sifatida saqlaydi.<br>
+            4. Shuningdek guruhda <code>/chatid</code> yozib, chiqqan ID raqamni yuqoridagi maydonlarga qo‘lda yozishingiz ham mumkin.
+          </div>
+
+          <h4 style="margin-bottom: 0.75rem; color: var(--accent-purple);">Google Gemini AI (Ixtiyoriy)</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Haqiqiy Gemini sun’iy intellektidan foydalanish uchun Google AI Studio API kalitingizni kiriting. Bo‘sh qolsa, o‘rnatilgan aqlli AI offline rejimda to‘liq ishlaydi:
+          </p>
+          <div class="form-group">
+            <label class="form-label">Gemini API Key</label>
+            <input type="password" id="set-api-key" class="form-input" placeholder="AIzaSy...">
+          </div>
+
+          <h4 style="margin-bottom: 0.75rem; color: var(--accent-emerald);">Zaxira Nusxasi (Backup)</h4>
+          <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+            <button type="button" class="btn btn-secondary" style="flex: 1; font-size: 0.82rem;" onclick="App.exportBackup()">
+              📥 Zaxira (JSON) yuklash
+            </button>
+            <label class="btn btn-secondary" style="flex: 1; font-size: 0.82rem; cursor: pointer; text-align: center;">
+              📤 Qayta tiklash
+              <input type="file" accept=".json" style="display: none;" onchange="App.importBackup(this)">
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Saqlash</button>
+            <button type="button" class="btn btn-secondary" onclick="App.closeSettingsModal()">Yopish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Open on Phone via Wi-Fi -->
+    <div class="modal-backdrop" id="phone-modal">
+      <div class="modal-panel" style="text-align: center;">
+        <button class="modal-close-btn" onclick="App.closePhoneModal()">✕</button>
+        <span class="live-status-tag" style="margin-bottom: 0.5rem;">📱 Mobil Qurilma</span>
+        <h2 style="margin-bottom: 0.75rem;">Telefonda Ochish</h2>
+        <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+          Telefoningiz va kompyuteringiz bitta Wi-Fi tarmog‘iga ulangan bo‘lsa, telefon brauzerida quyidagi manzilni oching:
+        </p>
+
+        <div style="background: rgba(255,255,255,0.05); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-family: monospace; font-size: 1.15rem; color: var(--accent-cyan); font-weight: 700; word-break: break-all; margin-bottom: 0.75rem; user-select: all;" id="phone-modal-url">
+          http://192.168.1.165:8080
+        </div>
+        <div style="display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="App.copyPhoneUrl()" style="font-size: 0.82rem; padding: 0.35rem 0.85rem;">
+            📋 Havolani nusxalash
+          </button>
+        </div>
+
+        <!-- Dynamic QR Code Card -->
+        <div class="qr-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+          <img id="phone-qr-img" src="" alt="Telefonda ochish QR kodi" style="width: 160px; height: 160px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+          <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem;">Kamerangizni yo‘naltirib skaner qiling 📷</span>
+        </div>
+
+        <div style="text-align: left; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-md); padding: 1rem; font-size: 0.82rem; line-height: 1.6; margin-bottom: 1.5rem;">
+          <strong style="color: #fff;">📲 Qulay o‘rnatish (PWA):</strong><br>
+          • <strong>Android (Chrome)</strong>: Menyudan <em>"Bosh ekranga qo‘shish"</em> (Add to Home screen) ni bosing.<br>
+          • <strong>iPhone (Safari)</strong>: Pastdagi <em>"Ulashish" (Share)</em> tugmasini bosib, <em>"Bosh ekranga" (Add to Home Screen)</em> ni tanlang.<br>
+          Ilova telefoningizda alohida Play Market/App Store dasturiday to‘liq ekran va offline rejimda ishlaydi!
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%;" onclick="App.closePhoneModal()">Tushunarli</button>
+      </div>
+    </div>
+
+    <!-- Modal: AI Magic Day Plan Generator -->
+    <div class="modal-backdrop" id="magic-plan-modal">
+      <div class="modal-panel" style="max-width: 560px;">
+        <button class="modal-close-btn" onclick="App.closeMagicPlanModal()">✕</button>
+        <span class="live-status-tag" style="margin-bottom: 0.5rem;">✨ Avtonom AI</span>
+        <h2 style="margin-bottom: 0.5rem;">AI Sehrli Kun Tartibi</h2>
+        <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+          Biologik soat (Circadian Rhythm) qonuniyatlari asosida kun tartibingizni avtomatik rejalashtirish uchun rejimni tanlang:
+        </p>
+
+        <div class="magic-templates-grid">
+          <div class="magic-template-card" onclick="App.applyMagicPlan('balanced')">
+            <div class="magic-template-icon">🌟</div>
+            <div class="magic-template-info">
+              <strong>Muvozanatli Kun (Tavsiya)</strong>
+              <span>Deep Work, samaradorlik, sport, tanaffuslar va kechki mutolaa</span>
+            </div>
+            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Qo‘llash</button>
+          </div>
+
+          <div class="magic-template-card" onclick="App.applyMagicPlan('study')">
+            <div class="magic-template-icon">📚</div>
+            <div class="magic-template-info">
+              <strong>Chuqur Ta’lim & Darslar</strong>
+              <span>Nazariya, testlar, chet tili (Listening/Speaking) va takrorlash</span>
+            </div>
+            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Qo‘llash</button>
+          </div>
+
+          <div class="magic-template-card" onclick="App.applyMagicPlan('health')">
+            <div class="magic-template-icon">🥗</div>
+            <div class="magic-template-info">
+              <strong>Salomatlik & Energiya</strong>
+              <span>Tonggi yugurish, to‘g‘ri ovqatlanish, yoga va stressiz reja</span>
+            </div>
+            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Qo‘llash</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Interactive AI Chat Drawer -->
+    <div class="modal-backdrop" id="ai-chat-modal">
+      <div class="modal-panel" style="max-width: 580px; display: flex; flex-direction: column; max-height: 85vh;">
+        <button class="modal-close-btn" onclick="App.closeAIChatModal()">✕</button>
+        <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 1rem;">
+          <div class="ai-avatar-icon" style="width: 36px; height: 36px; font-size: 1.1rem;">🤖</div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem;">IntelliDay AI Yordamchi</h3>
+            <span style="font-size: 0.75rem; color: var(--accent-emerald);">● Avtonom rejimda faol</span>
+          </div>
+        </div>
+
+        <!-- Chat history messages container -->
+        <div class="ai-chat-messages" id="ai-chat-messages">
+          <div class="chat-bubble ai-bubble">
+            Assalomu alaykum! Men sizning shaxsiy AI assistentingizman. Kun tartibingizni tuzish, kechikkan ishlarni avtomatik surish yoki erkin vaqtlarni topish bo‘yicha yordam berishim mumkin. Qanday yordam bera olaman?
+          </div>
+        </div>
+
+        <!-- Chat prompt chips -->
+        <div style="display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.5rem 0; margin-bottom: 0.5rem;">
+          <button class="chip-btn" style="font-size: 0.75rem;" onclick="document.getElementById('ai-chat-input').value = 'Bugungi rejamni tahlil qil'; App.sendAIChatMessage();">💡 Tahlil</button>
+          <button class="chip-btn" style="font-size: 0.75rem;" onclick="document.getElementById('ai-chat-input').value = 'Kechikkan ishlarni avtomatik surib ber'; App.sendAIChatMessage();">🔄 Avtopilot</button>
+          <button class="chip-btn" style="font-size: 0.75rem;" onclick="document.getElementById('ai-chat-input').value = 'Bugun bo‘sh vaqtim bormi?'; App.sendAIChatMessage();">⏰ Bo‘sh vaqt</button>
+          <button class="chip-btn" style="font-size: 0.75rem;" onclick="document.getElementById('ai-chat-input').value = 'Charchadim, qolganini ertaga sur'; App.sendAIChatMessage();">🌙 Ertaga surish</button>
+        </div>
+
+        <!-- Chat input bar -->
+        <div class="ai-chat-input-bar">
+          <input type="text" id="ai-chat-input" class="ai-text-input" placeholder="Xabar yozing..." onkeydown="if(event.key==='Enter') App.sendAIChatMessage()">
+          <button class="btn btn-primary" onclick="App.sendAIChatMessage()" style="padding: 0.6rem 1rem;">
+            Yuborish
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Add New Habit -->
+    <div class="modal-backdrop" id="add-habit-modal">
+      <div class="modal-panel" style="max-width: 480px;">
+        <button class="modal-close-btn" onclick="App.closeAddHabitModal()">✕</button>
+        <span class="live-status-tag" style="margin-bottom: 0.5rem;">🔥 Yangi Odat</span>
+        <h2 style="margin-bottom: 0.75rem;">Kunlik Odat Qo‘shish</h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+          Har kuni takrorlanadigan va sizni rivojlantiradigan foydali odatni shakllantiring.
+        </p>
+
+        <form id="add-habit-form" onsubmit="App.saveNewHabit(event)">
+          <div class="form-group">
+            <label class="form-label" for="habit-name-input">Odat nomi</label>
+            <input type="text" id="habit-name-input" class="form-input" placeholder="Masalan: 2 litr toza suv ichish" required autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Emodzi belgisi</label>
+            <div class="habit-emoji-picker" id="habit-emoji-picker">
+              <button type="button" class="emoji-chip selected" data-emoji="💧" onclick="App.selectHabitEmoji('💧')">💧</button>
+              <button type="button" class="emoji-chip" data-emoji="📖" onclick="App.selectHabitEmoji('📖')">📖</button>
+              <button type="button" class="emoji-chip" data-emoji="🏃‍♂️" onclick="App.selectHabitEmoji('🏃‍♂️')">🏃‍♂️</button>
+              <button type="button" class="emoji-chip" data-emoji="🧘" onclick="App.selectHabitEmoji('🧘')">🧘</button>
+              <button type="button" class="emoji-chip" data-emoji="🥗" onclick="App.selectHabitEmoji('🥗')">🥗</button>
+              <button type="button" class="emoji-chip" data-emoji="🌙" onclick="App.selectHabitEmoji('🌙')">🌙</button>
+              <button type="button" class="emoji-chip" data-emoji="💻" onclick="App.selectHabitEmoji('💻')">💻</button>
+              <button type="button" class="emoji-chip" data-emoji="🍎" onclick="App.selectHabitEmoji('🍎')">🍎</button>
+              <button type="button" class="emoji-chip" data-emoji="🎯" onclick="App.selectHabitEmoji('🎯')">🎯</button>
+              <button type="button" class="emoji-chip" data-emoji="✍️" onclick="App.selectHabitEmoji('✍️')">✍️</button>
+            </div>
+            <input type="hidden" id="selected-habit-emoji" value="💧">
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Qo‘shish</button>
+            <button type="button" class="btn btn-secondary" onclick="App.closeAddHabitModal()">Bekor qilish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Keyboard Shortcuts Cheat Sheet -->
+    <div class="modal-backdrop" id="shortcuts-modal">
+      <div class="modal-panel" style="max-width: 520px;">
+        <button class="modal-close-btn" onclick="App.closeShortcutsModal()">✕</button>
+        <span class="live-status-tag" style="margin-bottom: 0.5rem;">⌨️ Tezkor Tugmalar</span>
+        <h2 style="margin-bottom: 0.75rem;">Tezkor Tugmalar (Hotkeys)</h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+          Klaviaturadagi qulay tugmalar orqali ilovani tez va qulay boshqaring:
+        </p>
+
+        <div class="shortcuts-grid">
+          <div class="shortcut-row">
+            <span class="shortcut-desc">AI yordamchiga yozish</span>
+            <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>K</kbd> yoki <kbd>/</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">Yangi vazifa qo‘shish</span>
+            <div class="shortcut-keys"><kbd>N</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">Yangi odat qo‘shish</span>
+            <div class="shortcut-keys"><kbd>H</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">Pomodoro fokus taymeri</span>
+            <div class="shortcut-keys"><kbd>P</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">Sehrli kun rejasi (Magic Plan)</span>
+            <div class="shortcut-keys"><kbd>M</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">AI Avtopilot (Qayta muvozanatlash)</span>
+            <div class="shortcut-keys"><kbd>A</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">Kun tartibini chop etish / PDF</span>
+            <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>P</kbd></div>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc">Oynalarni yopish</span>
+            <div class="shortcut-keys"><kbd>Esc</kbd></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" onclick="App.closeShortcutsModal()">Tushunarli</button>
+      </div>
+    </div>
+
+    <!-- Auth & Multi-User Modal (Luxury Atelier Entrance Portal) -->
+    <div class="modal-backdrop auth-portal-backdrop" id="auth-modal">
+      <div class="auth-portal-card glass-card">
+        <!-- Close button if user wants to switch without logout or guest preview -->
+        <button class="auth-portal-close-btn" id="auth-modal-close-btn" onclick="AuthManager.closeLoginModal()" title="Yopish">✕</button>
+
+        <!-- Brand Hero Top -->
+        <div class="auth-portal-header">
+          <div class="auth-brand-aura">
+            <span class="auth-brand-icon">👑</span>
+          </div>
+          <div class="auth-portal-titles">
+            <div class="auth-portal-badge">
+              <span class="pulse-dot"></span>
+              <span>IntelliDay Atelier & Design Studio</span>
+            </div>
+            <h2 class="auth-portal-title">Modelxona & Konstruktorlik Portali</h2>
+            <p class="auth-portal-subtitle">
+              Kun tartibi, andaza rejalari va namunaviy tikuv vazifalari boshqaruvi
+            </p>
+          </div>
+        </div>
+
+        <!-- Dynamic Portal Body -->
+        <div id="auth-modal-body" class="auth-portal-body">
+          <!-- Populated by AuthManager.renderModalContent() -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="./js/storage.js"></script>
+  <script src="./js/notifications.js"></script>
+  <script src="./js/assistant.js"></script>
+  <script src="./js/schedule.js"></script>
+  <script src="./js/pomodoro.js"></script>
+  <script src="./js/habits.js"></script>
+  <script src="./js/views.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/corporate.js"></script>
+  <script src="./js/app.js"></script>
+
+</body>
+</html>

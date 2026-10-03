@@ -1,0 +1,143 @@
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Ertalabki badantarbiya va tetiklashish",
+      "time": "07:00",
+      "duration": 30,
+      "category": "sport",
+      "priority": "medium",
+      "date": "2026-10-03",
+      "completed": true,
+      "recurring": "daily",
+      "notes": "Suv ichish va 15 daqiqa yengil cho‘zilish mashqlari",
+      "updatedAt": 1790998423169
+    },
+    {
+      "id": "task-2",
+      "title": "Kunlik rejalarni ko‘rib chiqish & Fokus",
+      "time": "08:30",
+      "duration": 20,
+      "category": "personal",
+      "priority": "high",
+      "date": "2026-10-03",
+      "completed": true,
+      "recurring": "daily",
+      "notes": "Eng muhim 3 ta vazifani belgilash",
+      "updatedAt": 1790999023169
+    },
+    {
+      "id": "task-3",
+      "title": "Asosiy loyiha ustida chuqur ishlash (Deep Work)",
+      "time": "10:00",
+      "duration": 90,
+      "category": "work",
+      "priority": "high",
+      "date": "2026-10-03",
+      "completed": true,
+      "recurring": "none",
+      "notes": "Telefonni ovozsiz qilib, chalg‘imasdan bajarish",
+      "updatedAt": 1791003735199
+    },
+    {
+      "id": "task-4",
+      "title": "Tushlik & Yengil sayr",
+      "time": "13:00",
+      "duration": 45,
+      "category": "health",
+      "priority": "low",
+      "date": "2026-10-03",
+      "completed": false,
+      "recurring": "daily",
+      "notes": "Toza havoda nafas olish",
+      "updatedAt": 1791001023169
+    },
+    {
+      "id": "task-5",
+      "title": "Ingliz tili / yangi ko‘nikma o‘rganish",
+      "time": "16:30",
+      "duration": 45,
+      "category": "study",
+      "priority": "medium",
+      "date": "2026-10-03",
+      "completed": false,
+      "recurring": "daily",
+      "notes": "15 ta yangi so‘z va audio eshitish",
+      "updatedAt": 1791002023169
+    },
+    {
+      "id": "task-6",
+      "title": "Muhim qo‘ng‘iroq / jamoa bilan uchrashuv",
+      "time": "18:00",
+      "duration": 30,
+      "category": "meeting",
+      "priority": "high",
+      "date": "2026-10-03",
+      "completed": false,
+      "recurring": "none",
+      "notes": "Kunlik hisobot va natijalar",
+      "updatedAt": 1791002023169
+    },
+    {
+      "id": "task-7",
+      "title": "Kitob o‘qish & Kun sarhisobi",
+      "time": "21:30",
+      "duration": 30,
+      "category": "personal",
+      "priority": "medium",
+      "date": "2026-10-03",
+      "completed": false,
+      "recurring": "daily",
+      "notes": "Kamida 20 sahifa mutolaa",
+      "updatedAt": 1791002023169
+    }
+  ],
+  "habits": [
+    {
+      "id": "h-1",
+      "title": "2 litr toza suv ichish",
+      "icon": "💧",
+      "streak": 5,
+      "doneToday": false,
+      "lastDoneDate": null
+    },
+    {
+      "id": "h-2",
+      "title": "30 daqiqa kitob mutolaasi",
+      "icon": "📖",
+      "streak": 12,
+      "doneToday": false,
+      "lastDoneDate": null
+    },
+    {
+      "id": "h-3",
+      "title": "Ertalabki yugurish / mashq",
+      "icon": "🏃‍♂️",
+      "streak": 4,
+      "doneToday": false,
+      "lastDoneDate": null
+    },
+    {
+      "id": "h-4",
+      "title": "Telefonni 22:30 da o‘chirish",
+      "icon": "🌙",
+      "streak": 3,
+      "doneToday": false,
+      "lastDoneDate": null
+    }
+  ],
+  "habitLogs": {},
+  "settings": {
+    "theme": "dark",
+    "soundEnabled": true,
+    "soundTone": "chime",
+    "notificationsEnabled": true,
+    "telegramToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0",
+    "telegramChatId": "",
+    "geminiApiKey": "",
+    "pomodoroWorkTime": 25,
+    "pomodoroBreakTime": 5,
+    "telegramBotToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0"
+  },
+  "updatedAt": 1791006084849
+}

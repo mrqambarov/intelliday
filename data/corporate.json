@@ -1,0 +1,371 @@
+{
+  "teamMembers": [
+    {
+      "id": "tm_boss",
+      "name": "Bosh Konstruktor",
+      "role": "head_constructor",
+      "roleTitle": "Bosh Konstruktor / Bo‘lim rahbari",
+      "avatar": "👑",
+      "speedMultiplier": 1,
+      "phone": "+998 90 123-45-67",
+      "telegramUsername": "@bosh_konstruktor",
+      "telegramChatId": "",
+      "pin": "1234",
+      "currentStatus": "free",
+      "activeTask": null,
+      "active": true
+    },
+    {
+      "id": "tm_dilnoza",
+      "name": "Dilnoza Aliyeva",
+      "role": "assistant_constructor",
+      "roleTitle": "Yordamchi Konstruktor (Shogird)",
+      "avatar": "📐",
+      "speedMultiplier": 1,
+      "phone": "+998 93 111-22-33",
+      "telegramUsername": "@dilnoza_pattern",
+      "telegramChatId": "",
+      "pin": "1234",
+      "currentStatus": "busy",
+      "activeTask": {
+        "orderId": "ord_103",
+        "orderNumber": "ZAK-103",
+        "stageId": "st_103_1",
+        "stageName": "Murakkab andaza & Drapovka",
+        "startedAt": "2026-10-03T05:14:08.706Z",
+        "estimatedHours": 5
+      },
+      "active": true
+    },
+    {
+      "id": "tm_kamola",
+      "name": "Kamola Rustamova",
+      "role": "assistant_constructor",
+      "roleTitle": "Yordamchi Konstruktor (Andaza & Gradatsiya)",
+      "avatar": "📏",
+      "speedMultiplier": 1.1,
+      "phone": "+998 94 222-33-44",
+      "telegramUsername": "@kamola_andaza",
+      "telegramChatId": "",
+      "pin": "1234",
+      "currentStatus": "busy",
+      "activeTask": {
+        "orderId": "ord_102",
+        "orderNumber": "ZAK-102",
+        "stageId": "st_102_1",
+        "stageName": "Andaza loyihalash (Lekalo)",
+        "startedAt": "2026-10-03T05:00:00.000Z",
+        "estimatedHours": 3
+      },
+      "active": true
+    },
+    {
+      "id": "tm_malika",
+      "name": "Malika Usmonova",
+      "role": "sample_tailor",
+      "roleTitle": "Modelxona Usta Chevari (Oliy toifa)",
+      "avatar": "🪡",
+      "speedMultiplier": 0.95,
+      "phone": "+998 90 333-44-55",
+      "telegramUsername": "@malika_chevar",
+      "telegramChatId": "",
+      "pin": "1234",
+      "currentStatus": "free",
+      "activeTask": null,
+      "active": true
+    },
+    {
+      "id": "tm_shahnoza",
+      "name": "Shahnoza Karimova",
+      "role": "sample_tailor",
+      "roleTitle": "Namuna Tikuvchi Chevar",
+      "avatar": "🧵",
+      "speedMultiplier": 1,
+      "phone": "+998 97 444-55-66",
+      "telegramUsername": "@shahnoza_tikuv",
+      "telegramChatId": "",
+      "pin": "1234",
+      "currentStatus": "free",
+      "activeTask": null,
+      "active": true
+    },
+    {
+      "id": "tm_nigora",
+      "name": "Nigora Fayzullayeva",
+      "role": "sample_tailor",
+      "roleTitle": "Namuna Tikuvchi Chevar",
+      "avatar": "✂️",
+      "speedMultiplier": 1.05,
+      "phone": "+998 91 555-66-77",
+      "telegramUsername": "@nigora_namuna",
+      "telegramChatId": "",
+      "pin": "1234",
+      "currentStatus": "free",
+      "activeTask": null,
+      "active": true
+    }
+  ],
+  "orders": [
+    {
+      "title": "Kuzgi Trench-palto Milano",
+      "orderNumber": "ZAK-105",
+      "clientOrDept": "Eksport",
+      "priority": "high",
+      "stages": [
+        {
+          "id": "stg_1791006094750_0",
+          "name": "Andaza va Lekalo",
+          "stageKey": "",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_dilnoza",
+          "assignedName": "Dilnoza Aliyeva",
+          "assignedAvatar": "📐",
+          "estimatedHours": 3.5,
+          "effectiveHours": 4,
+          "startTime": "2026-10-03T05:41:34.750Z",
+          "endTime": "2026-10-03T10:42:00.000Z",
+          "status": "pending"
+        },
+        {
+          "id": "stg_1791006094750_1",
+          "name": "Namuna tikish",
+          "stageKey": "",
+          "role": "sample_tailor",
+          "assignedTo": "tm_malika",
+          "assignedName": "Malika Usmonova",
+          "assignedAvatar": "🪡",
+          "estimatedHours": 5,
+          "effectiveHours": 6.1,
+          "startTime": "2026-10-03T10:42:00.000Z",
+          "endTime": "2026-10-05T07:45:00.000Z",
+          "status": "pending"
+        }
+      ],
+      "calculatedETA": "2026-10-05T07:45:00.000Z",
+      "calculatedETAFormatted": "dushanba, 5-oktabr, 2026, 12:45",
+      "explanation": "• <b>1-bosqich (Andaza va Lekalo)</b>: 📐 Dilnoza Aliyeva qo‘lida <b>3-okt, 10:41</b> da boshlanadi va <b>3-okt, 15:42</b> da tayyor bo‘ladi (4s).\n• <b>2-bosqich (Namuna tikish)</b>: 🪡 Malika Usmonova qo‘lida <b>3-okt, 15:42</b> da boshlanadi va <b>5-okt, 12:45</b> da tayyor bo‘ladi (6.1s).\n",
+      "id": "ord_1791006094760",
+      "createdAt": "2026-10-03T05:41:34.760Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_101",
+      "orderNumber": "ZAK-101",
+      "title": "Klassik ayollar kostyumi (Eksport namunasi)",
+      "clientOrDept": "Eksport va Savdo bo‘limi",
+      "priority": "high",
+      "notes": "Yenglari va bort qismi dublyaj bilan qattiqroq ushlanishi kerak",
+      "createdAt": "2026-10-02T08:30:00.000Z",
+      "targetDeadline": "2026-10-06T18:00:00.000Z",
+      "stages": [
+        {
+          "id": "st_101_1",
+          "name": "Andaza & Gradatsiya (Lekalo)",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_dilnoza",
+          "estimatedHours": 4,
+          "status": "completed",
+          "notes": "44, 46, 48 o‘lchamlarda andaza tayyor bo‘ldi"
+        },
+        {
+          "id": "st_101_2",
+          "name": "Bichish & Tayyorlov",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_dilnoza",
+          "estimatedHours": 1.5,
+          "status": "completed",
+          "notes": "Mato bichilib, cho‘ntak va bortlar belgilandi"
+        },
+        {
+          "id": "st_101_3",
+          "name": "Namuna tikish (Modelxona chevari)",
+          "role": "sample_tailor",
+          "assignedTo": "tm_malika",
+          "estimatedHours": 6.5,
+          "status": "completed",
+          "notes": "Yoqa va yeng qismi tikilmoqda",
+          "completedAt": "2026-10-03T05:01:02.921Z"
+        },
+        {
+          "id": "st_101_4",
+          "name": "Primera & Bosh tekshiruv",
+          "role": "head_constructor",
+          "assignedTo": "tm_boss",
+          "estimatedHours": 1,
+          "status": "completed",
+          "notes": "Manekenda o‘tirishini va choklarini tekshirish",
+          "startedAt": "2026-10-03T05:01:02.922Z",
+          "completedAt": "2026-10-03T05:20:59.762Z"
+        }
+      ],
+      "calculatedETA": "2026-10-05T15:30:00.000Z",
+      "status": "completed",
+      "completedAt": "2026-10-03T05:20:59.762Z"
+    },
+    {
+      "id": "ord_102",
+      "orderNumber": "ZAK-102",
+      "title": "Bolalar sport to‘plami (Xudi + Shim)",
+      "clientOrDept": "Katalog bo‘limi / Yangi mavsum",
+      "priority": "medium",
+      "notes": "Kapyushon qismi astarli bo‘lsin",
+      "createdAt": "2026-10-03T09:00:00.000Z",
+      "targetDeadline": "2026-10-07T18:00:00.000Z",
+      "stages": [
+        {
+          "id": "st_102_1",
+          "name": "Andaza loyihalash (Lekalo)",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_kamola",
+          "estimatedHours": 3,
+          "status": "completed",
+          "notes": "128-134 bo‘y uchun chizma chizilmoqda",
+          "completedAt": "2026-10-03T05:22:35.273Z"
+        },
+        {
+          "id": "st_102_2",
+          "name": "Bichish & Futer matodan kesish",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_kamola",
+          "estimatedHours": 1,
+          "status": "completed",
+          "notes": "",
+          "startedAt": "2026-10-03T05:22:35.273Z",
+          "completedAt": "2026-10-03T05:22:35.824Z"
+        },
+        {
+          "id": "st_102_3",
+          "name": "Namuna tikish",
+          "role": "sample_tailor",
+          "assignedTo": "tm_shahnoza",
+          "estimatedHours": 4.5,
+          "status": "completed",
+          "notes": "Overlok va rasposhivalkada tikiladi",
+          "startedAt": "2026-10-03T05:22:35.824Z",
+          "completedAt": "2026-10-03T05:22:36.392Z"
+        },
+        {
+          "id": "st_102_4",
+          "name": "Primera & Yakuniy qabul",
+          "role": "head_constructor",
+          "assignedTo": "tm_boss",
+          "estimatedHours": 0.5,
+          "status": "completed",
+          "notes": "",
+          "startedAt": "2026-10-03T05:22:36.392Z",
+          "completedAt": "2026-10-03T05:22:36.816Z"
+        }
+      ],
+      "calculatedETA": "2026-10-06T12:00:00.000Z",
+      "status": "completed",
+      "completedAt": "2026-10-03T05:22:36.816Z"
+    },
+    {
+      "id": "ord_103",
+      "orderNumber": "ZAK-103",
+      "title": "Ipak ko‘ylak (Dizayn ko‘rgazmasi namunasi)",
+      "clientOrDept": "Bosh dizayner buyurtmasi",
+      "priority": "high",
+      "notes": "Nozik mato, choklar toza yopiq usulda tikilsin",
+      "createdAt": "2026-10-03T09:15:00.000Z",
+      "targetDeadline": "2026-10-08T18:00:00.000Z",
+      "stages": [
+        {
+          "id": "st_103_1",
+          "name": "Murakkab andaza & Drapovka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_dilnoza",
+          "estimatedHours": 5,
+          "status": "completed",
+          "notes": "Dilnoza 1-ishini tugatgach boshlaydi",
+          "acceptedAt": "2026-10-03T05:14:03.643Z",
+          "startedAt": "2026-10-03T05:14:08.706Z",
+          "completedAt": "2026-10-03T05:22:37.520Z"
+        },
+        {
+          "id": "st_103_2",
+          "name": "Bichish",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_dilnoza",
+          "estimatedHours": 2,
+          "status": "completed",
+          "notes": "",
+          "startedAt": "2026-10-03T05:22:37.520Z",
+          "completedAt": "2026-10-03T05:22:38.352Z"
+        },
+        {
+          "id": "st_103_3",
+          "name": "Namuna tikish",
+          "role": "sample_tailor",
+          "assignedTo": "tm_malika",
+          "estimatedHours": 8,
+          "status": "completed",
+          "notes": "Malika kostyumni topshirgach boshlaydi",
+          "startedAt": "2026-10-03T05:22:38.352Z",
+          "completedAt": "2026-10-03T05:22:39.848Z"
+        },
+        {
+          "id": "st_103_4",
+          "name": "Primera & Bosh tekshiruv",
+          "role": "head_constructor",
+          "assignedTo": "tm_boss",
+          "estimatedHours": 1,
+          "status": "completed",
+          "notes": "",
+          "startedAt": "2026-10-03T05:22:39.848Z",
+          "completedAt": "2026-10-03T05:22:40.184Z"
+        }
+      ],
+      "calculatedETA": "2026-10-08T16:00:00.000Z",
+      "status": "completed",
+      "completedAt": "2026-10-03T05:22:40.184Z"
+    }
+  ],
+  "settings": {
+    "workStartHour": 8.5,
+    "workEndHour": 17.5,
+    "lunchStart": 13,
+    "lunchEnd": 14,
+    "delayBufferPercent": 15,
+    "constructorGroupId": "-100111222333",
+    "constructorGroupName": "Konstruktorlar Guruhi (Lekalo)",
+    "modelxonaGroupId": "-100444555666",
+    "modelxonaGroupName": "Modelxona Guruhi (Etalon)",
+    "telegramBotToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0",
+    "connectedGroups": []
+  },
+  "updatedAt": 1791006094761,
+  "personalPlans": {
+    "tm_dilnoza": {
+      "tasks": [
+        {
+          "id": "task_corp_st_103_1",
+          "title": "[ZAK-103] Murakkab andaza & Drapovka",
+          "orderId": "ord_103",
+          "orderNumber": "ZAK-103",
+          "stageId": "st_103_1",
+          "time": "10:00",
+          "duration": 300,
+          "category": "work",
+          "priority": "high",
+          "date": "2026-10-03",
+          "completed": false,
+          "notes": "Mato va model: Ipak ko‘ylak (Dizayn ko‘rgazmasi namunasi). Nozik mato, choklar toza yopiq usulda tikilsin",
+          "isCorporateStage": true
+        },
+        {
+          "id": "plan_tm_dilnoza_1",
+          "title": "Ertalabki ish joyi va andazalarni tayyorlash",
+          "time": "08:30",
+          "duration": 30,
+          "category": "work",
+          "priority": "medium",
+          "date": "2026-10-03",
+          "completed": true
+        }
+      ],
+      "habits": [],
+      "habitLogs": []
+    }
+  }
+}

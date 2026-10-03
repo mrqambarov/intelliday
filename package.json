@@ -1,0 +1,15 @@
+{
+  "name": "intelliday-atelier",
+  "version": "1.0.0",
+  "description": "IntelliDay - Modelxona va Konstruktorlik Markazi Kun Tartibi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["atelier", "pattern-making", "tailoring", "schedule", "telegram-bot"],
+  "author": "IntelliDay Team",
+  "license": "ISC"
+}
