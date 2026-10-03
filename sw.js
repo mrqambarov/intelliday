@@ -1,17 +1,20 @@
-const CACHE_NAME = 'intelliday-v3';
+const CACHE_NAME = 'intelliday-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './css/index.css',
-  './css/components.css',
-  './css/responsive.css',
-  './js/storage.js',
-  './js/notifications.js',
-  './js/assistant.js',
-  './js/schedule.js',
-  './js/pomodoro.js',
-  './js/habits.js',
-  './js/app.js',
+  './css/index.css?v=3.2',
+  './css/components.css?v=3.2',
+  './css/responsive.css?v=3.2',
+  './js/storage.js?v=3.2',
+  './js/notifications.js?v=3.2',
+  './js/assistant.js?v=3.2',
+  './js/schedule.js?v=3.2',
+  './js/pomodoro.js?v=3.2',
+  './js/habits.js?v=3.2',
+  './js/views.js?v=3.2',
+  './js/auth.js?v=3.2',
+  './js/corporate.js?v=3.2',
+  './js/app.js?v=3.2',
   './assets/icon.png',
   './manifest.webmanifest'
 ];

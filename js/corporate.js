@@ -219,6 +219,13 @@ const CorporateManager = {
                 <h3 style="margin: 0; font-size: 1.05rem; color: #fff;">${escapeHtml(ord.title)}</h3>
               </div>
               <span style="font-size: 0.78rem; color: var(--text-muted);">Mijoz / Bo‘lim: <strong>${escapeHtml(ord.clientOrDept || 'Ichki buyurtma')}</strong></span>
+              ${Array.isArray(ord.models) && ord.models.length ? `
+                <div class="order-models-line">
+                  <span class="calc-sum-chip">👗 ${ord.models.length} ta model</span>
+                  <span class="calc-sum-chip alt">🧵 Jami ${ord.totalPieces || ord.models.reduce((s, m) => s + (m.qty || 0), 0)} dona</span>
+                  ${ord.models.map(m => `<span class="order-model-tag">${escapeHtml(m.name)} × ${m.qty}</span>`).join('')}
+                </div>
+              ` : ''}
             </div>
             <div>
               ${etaBadge}
@@ -253,7 +260,7 @@ const CorporateManager = {
             <div class="stage-step-body">
               <span class="stage-step-name">${escapeHtml(st.name)}</span>
               <span class="stage-step-assigned">
-                ${emp ? `${emp.avatar} ${emp.name.split(' ')[0]}` : 'Noma’lum'} • ${st.estimatedHours}s
+                ${emp ? `${emp.avatar} ${emp.name.split(' ')[0]}` : 'Noma’lum'} • ${st.estimatedHours}s${st.multiplier > 1 ? ` (${st.unitHours}s × ${st.multiplier})` : ''}
               </span>
             </div>
             ${!isCompleted ? `
@@ -392,8 +399,8 @@ const CorporateManager = {
           
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label">Zakaz Nomi / Model Nomi</label>
-              <input type="text" id="calc-title" class="form-input" placeholder="Masalan: Yozgi sarafan (Model #55)" required>
+              <label class="form-label">Zakaz Nomi</label>
+              <input type="text" id="calc-title" class="form-input" placeholder="Masalan: Yozgi kolleksiya 2026" required>
             </div>
             <div class="form-group">
               <label class="form-label">Zakaz Raqami</label>
@@ -416,53 +423,68 @@ const CorporateManager = {
             </div>
           </div>
 
+          <!-- Models list: har bir model nomi va undan nechta tikilishi -->
+          <h4 style="margin: 1.25rem 0 0.75rem; color: var(--accent-cyan); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+            <span>👗 Modellar va Tikiladigan Soni:</span>
+            <span class="calc-models-summary" id="calc-models-summary"></span>
+          </h4>
+
+          <div class="calc-stages-box" id="calc-models-list">
+            ${this.modelRowHtml(1)}
+            <button type="button" class="calc-add-model-btn" id="calc-add-model-btn" onclick="CorporateManager.addModelRow()">
+              ➕ Yana model qo‘shish
+            </button>
+          </div>
+
           <!-- Dynamic Stages Setup -->
           <h4 style="margin: 1.25rem 0 0.75rem; color: var(--accent-cyan); display: flex; align-items: center; justify-content: space-between;">
             <span>Ish Bosqichlari va Biriktirilgan Xodimlar:</span>
-            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Ketma-ket navbat bilan hisoblanadi</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Vaqt 1 model / 1 dona uchun kiritiladi</span>
           </h4>
 
           <div class="calc-stages-box" id="calc-stages-list">
             <!-- Stage 1: Lekalo -->
-            <div class="calc-stage-row">
+            <div class="calc-stage-row" data-basis="model">
               <span class="calc-stage-step">1</span>
               <div class="form-group" style="flex: 2; margin-bottom: 0;">
                 <label class="form-label" style="font-size: 0.75rem;">1-bosqich: Andaza (Lekalo)</label>
                 <input type="text" class="form-input calc-st-name" value="Andaza & Gradatsiya (Lekalo)" required>
               </div>
               <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Mas’ul Xodim (Shogird/Konstruktor)</label>
+                <label class="form-label" style="font-size: 0.75rem;">Mas’ul Konstruktor</label>
                 <select class="form-select calc-st-emp">
                   ${getOptions('assistant_constructor')}
                 </select>
               </div>
               <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Vaqt (soat)</label>
+                <label class="form-label" style="font-size: 0.75rem;">1 model uchun (soat)</label>
                 <input type="number" class="form-input calc-st-hours" value="4.0" step="0.5" min="0.5" max="40" oninput="CorporateManager.livePreviewETA()">
+                <span class="calc-st-total"></span>
               </div>
             </div>
 
             <!-- Stage 2: Bichish -->
-            <div class="calc-stage-row">
+            <div class="calc-stage-row" data-basis="piece">
               <span class="calc-stage-step">2</span>
               <div class="form-group" style="flex: 2; margin-bottom: 0;">
                 <label class="form-label" style="font-size: 0.75rem;">2-bosqich: Bichish & Tayyorlov</label>
                 <input type="text" class="form-input calc-st-name" value="Bichish & Dublyaj" required>
               </div>
               <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Mas’ul Xodim</label>
+                <label class="form-label" style="font-size: 0.75rem;">Mas’ul Bichuvchi</label>
                 <select class="form-select calc-st-emp">
-                  ${getOptions('assistant_constructor')}
+                  ${getOptions('cutter')}
                 </select>
               </div>
               <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Vaqt (soat)</label>
+                <label class="form-label" style="font-size: 0.75rem;">1 dona uchun (soat)</label>
                 <input type="number" class="form-input calc-st-hours" value="1.5" step="0.5" min="0.5" max="40" oninput="CorporateManager.livePreviewETA()">
+                <span class="calc-st-total"></span>
               </div>
             </div>
 
             <!-- Stage 3: Namuna tikish -->
-            <div class="calc-stage-row">
+            <div class="calc-stage-row" data-basis="piece">
               <span class="calc-stage-step">3</span>
               <div class="form-group" style="flex: 2; margin-bottom: 0;">
                 <label class="form-label" style="font-size: 0.75rem;">3-bosqich: Namuna Tikish</label>
@@ -475,13 +497,14 @@ const CorporateManager = {
                 </select>
               </div>
               <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Vaqt (soat)</label>
+                <label class="form-label" style="font-size: 0.75rem;">1 dona uchun (soat)</label>
                 <input type="number" class="form-input calc-st-hours" value="6.0" step="0.5" min="0.5" max="80" oninput="CorporateManager.livePreviewETA()">
+                <span class="calc-st-total"></span>
               </div>
             </div>
 
             <!-- Stage 4: Primera -->
-            <div class="calc-stage-row">
+            <div class="calc-stage-row" data-basis="model">
               <span class="calc-stage-step">4</span>
               <div class="form-group" style="flex: 2; margin-bottom: 0;">
                 <label class="form-label" style="font-size: 0.75rem;">4-bosqich: Primera & Bosh Tekshiruv</label>
@@ -494,8 +517,9 @@ const CorporateManager = {
                 </select>
               </div>
               <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Vaqt (soat)</label>
+                <label class="form-label" style="font-size: 0.75rem;">1 model uchun (soat)</label>
                 <input type="number" class="form-input calc-st-hours" value="1.0" step="0.5" min="0.5" max="10" oninput="CorporateManager.livePreviewETA()">
+                <span class="calc-st-total"></span>
               </div>
             </div>
           </div>
@@ -532,17 +556,88 @@ const CorporateManager = {
     this.livePreviewETA();
   },
 
+  modelRowHtml(index) {
+    return `
+      <div class="calc-model-row">
+        <span class="calc-stage-step calc-model-idx">${index}</span>
+        <div class="form-group" style="flex: 3; margin-bottom: 0; min-width: 160px;">
+          <label class="form-label" style="font-size: 0.75rem;">Model nomi / raqami</label>
+          <input type="text" class="form-input calc-model-name" placeholder="Masalan: Model #55 — Yozgi sarafan" required>
+        </div>
+        <div class="form-group" style="flex: 1; margin-bottom: 0; min-width: 100px;">
+          <label class="form-label" style="font-size: 0.75rem;">Necha dona tikiladi</label>
+          <input type="number" class="form-input calc-model-qty" value="1" min="1" max="999" step="1" required oninput="CorporateManager.livePreviewETA()">
+        </div>
+        <button type="button" class="calc-model-remove" title="Modelni o‘chirish" onclick="CorporateManager.removeModelRow(this)">✕</button>
+      </div>
+    `;
+  },
+
+  addModelRow() {
+    const btn = document.getElementById('calc-add-model-btn');
+    if (!btn) return;
+    const count = document.querySelectorAll('.calc-model-row').length;
+    btn.insertAdjacentHTML('beforebegin', this.modelRowHtml(count + 1));
+    const rows = document.querySelectorAll('.calc-model-row');
+    rows[rows.length - 1].querySelector('.calc-model-name')?.focus();
+    this.renumberModelRows();
+    this.livePreviewETA();
+  },
+
+  removeModelRow(btn) {
+    const rows = document.querySelectorAll('.calc-model-row');
+    if (rows.length <= 1) return;
+    btn.closest('.calc-model-row')?.remove();
+    this.renumberModelRows();
+    this.livePreviewETA();
+  },
+
+  renumberModelRows() {
+    const rows = document.querySelectorAll('.calc-model-row');
+    rows.forEach((row, i) => {
+      const idx = row.querySelector('.calc-model-idx');
+      if (idx) idx.textContent = i + 1;
+      const rm = row.querySelector('.calc-model-remove');
+      if (rm) rm.disabled = rows.length <= 1;
+    });
+  },
+
+  collectModelsFromForm() {
+    const models = [];
+    document.querySelectorAll('.calc-model-row').forEach((row, i) => {
+      const name = row.querySelector('.calc-model-name')?.value.trim() || `Model ${i + 1}`;
+      const qty = Math.max(1, parseInt(row.querySelector('.calc-model-qty')?.value, 10) || 1);
+      models.push({ name, qty });
+    });
+    if (models.length === 0) models.push({ name: 'Model 1', qty: 1 });
+    const totalPieces = models.reduce((s, m) => s + m.qty, 0);
+    return { models, modelCount: models.length, totalPieces };
+  },
+
   collectStagesFromForm() {
+    const { modelCount, totalPieces } = this.collectModelsFromForm();
     const rows = document.querySelectorAll('.calc-stage-row');
     const stages = [];
     rows.forEach((row, i) => {
       const name = row.querySelector('.calc-st-name')?.value.trim() || `Bosqich ${i + 1}`;
       const assignedTo = row.querySelector('.calc-st-emp')?.value || '';
-      const hours = parseFloat(row.querySelector('.calc-st-hours')?.value) || 2;
+      const unitHours = parseFloat(row.querySelector('.calc-st-hours')?.value) || 2;
+      const qtyBasis = row.dataset.basis === 'piece' ? 'piece' : 'model';
+      const multiplier = qtyBasis === 'piece' ? totalPieces : modelCount;
+      const hours = parseFloat((unitHours * multiplier).toFixed(2));
+
+      const totalEl = row.querySelector('.calc-st-total');
+      if (totalEl) {
+        totalEl.textContent = `× ${multiplier} ${qtyBasis === 'piece' ? 'dona' : 'model'} = ${hours} soat`;
+      }
+
       stages.push({
         id: `st_new_${i + 1}`,
         name,
         assignedTo,
+        unitHours,
+        qtyBasis,
+        multiplier,
         estimatedHours: hours,
         status: i === 0 ? 'in_progress' : 'pending'
       });
@@ -550,7 +645,19 @@ const CorporateManager = {
     return stages;
   },
 
+  updateModelsSummary() {
+    const el = document.getElementById('calc-models-summary');
+    if (!el) return;
+    const { modelCount, totalPieces } = this.collectModelsFromForm();
+    el.innerHTML = `
+      <span class="calc-sum-chip">👗 ${modelCount} ta model</span>
+      <span class="calc-sum-chip alt">🧵 Jami ${totalPieces} dona</span>
+    `;
+  },
+
   async livePreviewETA() {
+    this.renumberModelRows();
+    this.updateModelsSummary();
     const stages = this.collectStagesFromForm();
     const resultBox = document.getElementById('calc-live-result-box');
     const etaTextEl = document.getElementById('calc-result-eta');
@@ -593,12 +700,17 @@ const CorporateManager = {
     const stages = this.collectStagesFromForm();
     if (!title || stages.length === 0) return;
 
+    const { models, modelCount, totalPieces } = this.collectModelsFromForm();
+
     const payload = {
       title,
       orderNumber,
       clientOrDept,
       priority,
       notes,
+      models,
+      modelCount,
+      totalPieces,
       stages
     };
 

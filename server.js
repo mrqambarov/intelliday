@@ -384,6 +384,9 @@ function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
       assignedName: emp ? emp.name : 'Belgilanmagan',
       assignedAvatar: emp ? emp.avatar : '👤',
       estimatedHours: st.estimatedHours || 2,
+      unitHours: st.unitHours,
+      qtyBasis: st.qtyBasis,
+      multiplier: st.multiplier,
       effectiveHours: parseFloat(effectiveHours.toFixed(1)),
       startTime: stageStart.toISOString(),
       endTime: stageEnd.toISOString(),
@@ -526,6 +529,7 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overr
 
   const isConstructorStage = (
     stage.role === 'assistant_constructor' ||
+    stage.role === 'cutter' ||
     stage.stageKey === 'pattern' ||
     stage.stageKey === 'cutting' ||
     /andaza|bich|lekalo|gradatsiya|konstruk/i.test(stage.name || '')
@@ -572,8 +576,18 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overr
     `${headerIcon} ${titleBadge}\n\n` +
     `👗 <b>Model / Zakaz:</b> [${escapeHtml(order.orderNumber)}] <b>${escapeHtml(order.title)}</b>\n` +
     `🏢 <b>Bo‘lim / Buyurtmachi:</b> ${escapeHtml(order.clientOrDept || 'Asosiy ishlab chiqarish')}\n` +
-    `⚡ <b>Muhimlik darajasi:</b> ${order.priority === 'urgent' ? '🔴 O‘ta muhim (Shoshilinch)' : order.priority === 'high' ? '🟠 Yuqori' : '🔵 Standart'}\n\n` +
-    `📍 <b>BOSQICH:</b> <b>${escapeHtml(stage.name)}</b>\n` +
+    `⚡ <b>Muhimlik darajasi:</b> ${order.priority === 'urgent' ? '🔴 O‘ta muhim (Shoshilinch)' : order.priority === 'high' ? '🟠 Yuqori' : '🔵 Standart'}\n`;
+
+  if (Array.isArray(order.models) && order.models.length) {
+    const totalPieces = order.totalPieces || order.models.reduce((s, m) => s + (parseInt(m.qty, 10) || 0), 0);
+    text += `\n📋 <b>Modellar: ${order.models.length} ta | Jami: ${totalPieces} dona</b>\n`;
+    order.models.forEach((m, i) => {
+      text += `   ${i + 1}. ${escapeHtml(m.name)} — <b>${m.qty} dona</b>\n`;
+    });
+  }
+
+  text +=
+    `\n📍 <b>BOSQICH:</b> <b>${escapeHtml(stage.name)}</b>\n` +
     `👤 <b>Biriktirilgan mas’ul:</b> <b>${escapeHtml(empDisplay)}</b>\n\n` +
     `⏰ <b>Boshlanish vaqti:</b> <b>${startTimeFormatted}</b>\n` +
     `⏳ <b>Ajratilgan vaqt:</b> <b>${stage.effectiveHours || stage.estimatedHours || 2} soat</b>\n` +
@@ -1999,7 +2013,7 @@ const server = http.createServer((req, res) => {
           id: 'stg_test_1',
           name: isConst ? '✂️ Andaza loyihalash & Gradatsiya (Lekalo)' : '🪡 Namuna tikish & Montaj',
           role: isConst ? 'assistant_constructor' : 'sample_tailor',
-          assignedTo: isConst ? 'tm_dilnoza' : 'tm_malika',
+          assignedTo: isConst ? 'tm_oqilbek' : 'tm_kamola_master',
           startTime: new Date().toISOString(),
           endTime: new Date(Date.now() + 3.5 * 3600 * 1000).toISOString(),
           effectiveHours: 3.5,
@@ -2113,8 +2127,10 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    if (ext === '.html') {
-      res.setHeader('Cache-Control', 'no-cache');
+    if (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
     } else {
       res.setHeader('Cache-Control', 'public, max-age=86400');
     }

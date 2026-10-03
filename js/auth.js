@@ -100,8 +100,9 @@ const AuthManager = {
     if (badgeEl) {
       let roleText = 'Xodim';
       if (this.currentUser.role === 'head_constructor') roleText = 'Boshliq';
-      else if (this.currentUser.role === 'assistant_constructor') roleText = 'Shogird';
+      else if (this.currentUser.role === 'assistant_constructor') roleText = 'Konstruktor';
       else if (this.currentUser.role === 'sample_tailor') roleText = 'Chevar';
+      else if (this.currentUser.role === 'cutter') roleText = 'Bichuvchi';
       badgeEl.textContent = roleText;
       badgeEl.className = `user-role-badge ${this.currentUser.role}`;
     }
