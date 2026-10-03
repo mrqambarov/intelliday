@@ -114,6 +114,7 @@ function saveCorporateDB() {
 
 // In-memory Telegram auth codes: code -> { userId, expiresAt }
 const telegramAuthCodes = new Map();
+let cachedBotUsername = '';
 
 function sanitizeUser(user) {
   if (!user) return null;
@@ -921,6 +922,15 @@ async function handleTelegramUpdate(token, update) {
         (t.telegramChatId && t.telegramChatId === String(chatId))
       );
 
+      if (!matchedMember) {
+        await sendTelegramMessage(token, chatId,
+          `⛔ <b>Profil topilmadi</b>\n\n` +
+          `Sizning Telegram akkauntingiz (${tgUsername || 'username yo‘q'}, ID: <code>${chatId}</code>) hech bir xodimga biriktirilmagan.\n\n` +
+          `Rahbaringizdan profilingizga Telegram username'ingizni qo‘shishini so‘rang.`
+        );
+        return;
+      }
+
       let code = '';
       if (text.startsWith('/start login_')) {
         code = text.replace('/start login_', '').trim();
@@ -930,17 +940,11 @@ async function handleTelegramUpdate(token, update) {
         code = Math.floor(100000 + Math.random() * 900000).toString();
       }
 
-      if (!matchedMember) {
-        matchedMember = corporateDb.teamMembers[0];
-      }
-
-      if (matchedMember) {
-        matchedMember.telegramChatId = String(chatId);
-        saveCorporateDB();
-      }
+      matchedMember.telegramChatId = String(chatId);
+      saveCorporateDB();
 
       telegramAuthCodes.set(code, {
-        userId: matchedMember ? matchedMember.id : 'tm_boss',
+        userId: matchedMember.id,
         expiresAt: Date.now() + 15 * 60000
       });
 
@@ -1171,56 +1175,99 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: Generate / Send Telegram Auth Code ---
+  // --- API: Send Telegram Auth Code to an already-linked user ---
   if (pathname === '/api/auth/telegram-code' && req.method === 'POST') {
     let body = '';
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
-        const { telegramUsername, userId } = JSON.parse(body || '{}');
-        let user = null;
-        if (userId) {
-          user = corporateDb.teamMembers.find(t => t.id === userId);
-        } else if (telegramUsername) {
-          const cleanUser = telegramUsername.trim().toLowerCase();
-          user = corporateDb.teamMembers.find(t => 
-            t.telegramUsername && t.telegramUsername.toLowerCase() === (cleanUser.startsWith('@') ? cleanUser : '@' + cleanUser)
-          );
-        }
+        const { telegramUsername } = JSON.parse(body || '{}');
+        const cleanUser = String(telegramUsername || '').trim().toLowerCase().replace(/^@/, '');
+        const user = cleanUser ? corporateDb.teamMembers.find(t =>
+          t.telegramUsername && t.telegramUsername.toLowerCase().replace(/^@/, '') === cleanUser
+        ) : null;
 
-        if (!user) user = corporateDb.teamMembers[0]; // fallback
+        const token = (db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+        if (!user || !user.telegramChatId || !token) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Bu username bot bilan bog‘lanmagan. Avval botga /login deb yozing yoki "Telegram orqali kirish" tugmasini bosing.'
+          }));
+          return;
+        }
 
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        telegramAuthCodes.set(code, {
-          userId: user.id,
-          expiresAt: Date.now() + 15 * 60000
-        });
+        telegramAuthCodes.set(code, { userId: user.id, expiresAt: Date.now() + 15 * 60000 });
 
-        // If telegram bot token is configured and user has telegramChatId, send via bot
-        const token = (db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
-        const targetChatId = user.telegramChatId || db.settings.telegramChatId;
-        if (token && targetChatId) {
-          const webUrl = `http://${LOCAL_IP}:${currentPort}/?auth=${code}`;
-          await sendTelegramMessage(token, targetChatId, 
-            `🔐 <b>IntelliDay — Kirish Kodingiz</b>\n\n` +
-            `Hurmatli <b>${escapeHtml(user.name)}</b>, sizning bir martalik kirish kodingiz: <code>${code}</code>\n\n` +
-            `📱 <a href="${webUrl}">1-klikda tizimga kirish</a>`
-          );
-        }
+        await sendTelegramMessage(token, user.telegramChatId,
+          `🔐 <b>IntelliDay — Kirish Kodingiz</b>\n\n` +
+          `Hurmatli <b>${escapeHtml(user.name)}</b>, bir martalik kirish kodingiz: <code>${code}</code>\n` +
+          `⏱ 15 daqiqa amal qiladi.`
+        );
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-          success: true,
-          code, // Returned for instant testing or local simulation
-          userId: user.id,
-          userName: user.name,
-          message: `Kod tayyorlandi: ${code}`
-        }));
+        res.end(JSON.stringify({ success: true, message: 'Kod Telegram orqali yuborildi' }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: e.message }));
       }
     });
+    return;
+  }
+
+  // --- API: Start 1-click Telegram login (web -> t.me/bot?start=login_XXX) ---
+  if (pathname === '/api/auth/telegram-start' && req.method === 'POST') {
+    (async () => {
+      try {
+        const token = (db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+        if (!token) throw new Error('Telegram bot sozlanmagan');
+        if (!cachedBotUsername) {
+          const r = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+          const j = await r.json();
+          if (j.ok) cachedBotUsername = j.result.username;
+        }
+        if (!cachedBotUsername) throw new Error('Bot ma’lumotini olib bo‘lmadi');
+
+        const code = require('crypto').randomBytes(12).toString('hex');
+        telegramAuthCodes.set(code, { userId: null, expiresAt: Date.now() + 10 * 60000 });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          code,
+          botUsername: cachedBotUsername,
+          url: `https://t.me/${cachedBotUsername}?start=login_${code}`
+        }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    })();
+    return;
+  }
+
+  // --- API: Poll 1-click Telegram login status ---
+  if (pathname === '/api/auth/telegram-check' && req.method === 'GET') {
+    const code = String(reqUrl.searchParams.get('code') || '');
+    const entry = telegramAuthCodes.get(code);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    if (!entry || entry.expiresAt < Date.now()) {
+      res.end(JSON.stringify({ success: false, status: 'expired' }));
+      return;
+    }
+    if (!entry.userId) {
+      res.end(JSON.stringify({ success: false, status: 'pending' }));
+      return;
+    }
+    const user = corporateDb.teamMembers.find(t => t.id === entry.userId);
+    telegramAuthCodes.delete(code);
+    res.end(JSON.stringify({
+      success: true,
+      status: 'ok',
+      user: sanitizeUser(user),
+      token: 'tok_' + Date.now() + '_' + user.id
+    }));
     return;
   }
 
@@ -1230,33 +1277,38 @@ const server = http.createServer((req, res) => {
     req.on('data', c => body += c);
     req.on('end', () => {
       try {
-        const { userId, pin, code, quickLoginId } = JSON.parse(body || '{}');
+        const { userId, pin, code, login, password } = JSON.parse(body || '{}');
         let matchedUser = null;
 
         if (code) {
           const cleanCode = String(code).trim();
           const authEntry = telegramAuthCodes.get(cleanCode);
-          if (authEntry && authEntry.expiresAt > Date.now()) {
+          if (authEntry && authEntry.expiresAt > Date.now() && authEntry.userId) {
             matchedUser = corporateDb.teamMembers.find(t => t.id === authEntry.userId);
             telegramAuthCodes.delete(cleanCode);
-          } else if (cleanCode === '1234') {
-            matchedUser = userId ? corporateDb.teamMembers.find(t => t.id === userId) : corporateDb.teamMembers[0];
           }
-        } else if (quickLoginId) {
-          matchedUser = corporateDb.teamMembers.find(t => t.id === quickLoginId);
+        } else if (login) {
+          // Login (username / telegram username / phone) + password (PIN)
+          const l = String(login).trim().toLowerCase().replace(/^@/, '');
+          const digits = l.replace(/\D/g, '');
+          const candidate = corporateDb.teamMembers.find(t =>
+            (t.login && t.login.toLowerCase() === l) ||
+            (t.telegramUsername && t.telegramUsername.toLowerCase().replace(/^@/, '') === l) ||
+            (digits.length >= 9 && t.phone && t.phone.replace(/\D/g, '').endsWith(digits))
+          );
+          if (candidate && candidate.active !== false && String(password || '') === String(candidate.pin || '1234')) {
+            matchedUser = candidate;
+          }
         } else if (userId) {
           const candidate = corporateDb.teamMembers.find(t => t.id === userId);
-          if (candidate) {
-            const expectedPin = candidate.pin || '1234';
-            if (!pin || pin === expectedPin || pin === '1234') {
-              matchedUser = candidate;
-            }
+          if (candidate && String(pin || '') === String(candidate.pin || '1234')) {
+            matchedUser = candidate;
           }
         }
 
         if (!matchedUser) {
           res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ success: false, error: 'PIN-kod yoki Telegram kodi noto‘g‘ri' }));
+          res.end(JSON.stringify({ success: false, error: 'Login yoki parol (kod) noto‘g‘ri' }));
           return;
         }
 

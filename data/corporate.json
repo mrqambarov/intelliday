@@ -13,7 +13,8 @@
       "pin": "1234",
       "currentStatus": "free",
       "activeTask": null,
-      "active": true
+      "active": true,
+      "login": "admin"
     },
     {
       "id": "tm_dilnoza",
@@ -35,7 +36,8 @@
         "startedAt": "2026-10-03T05:14:08.706Z",
         "estimatedHours": 5
       },
-      "active": true
+      "active": true,
+      "login": "dilnoza"
     },
     {
       "id": "tm_kamola",
@@ -57,7 +59,8 @@
         "startedAt": "2026-10-03T05:00:00.000Z",
         "estimatedHours": 3
       },
-      "active": true
+      "active": true,
+      "login": "kamola"
     },
     {
       "id": "tm_malika",
@@ -72,7 +75,8 @@
       "pin": "1234",
       "currentStatus": "free",
       "activeTask": null,
-      "active": true
+      "active": true,
+      "login": "malika"
     },
     {
       "id": "tm_shahnoza",
@@ -87,7 +91,8 @@
       "pin": "1234",
       "currentStatus": "free",
       "activeTask": null,
-      "active": true
+      "active": true,
+      "login": "shahnoza"
     },
     {
       "id": "tm_nigora",
@@ -102,7 +107,8 @@
       "pin": "1234",
       "currentStatus": "free",
       "activeTask": null,
-      "active": true
+      "active": true,
+      "login": "nigora"
     }
   ],
   "orders": [
