@@ -10,6 +10,7 @@
  */
 
 const http = require('http');
+const crypto = require('crypto');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -109,18 +110,70 @@ function saveCorporateDB() {
   try {
     fs.writeFileSync(CORPORATE_FILE, JSON.stringify(corporateDb, null, 2), 'utf8');
   } catch (e) {}
-  broadcastSSE('corporate_sync', corporateDb);
+  broadcastSSE('corporate_sync', publicCorporateDb());
 }
 
 // In-memory Telegram auth codes: code -> { userId, expiresAt }
 const telegramAuthCodes = new Map();
 let cachedBotUsername = '';
 
+// --- Passwords (scrypt hash; legacy plain `pin` still accepted until replaced) ---
+const SECRET_USER_FIELDS = ['pin', 'password', 'passwordHash'];
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password).trim(), salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
+}
+
+function verifyPassword(user, password) {
+  if (!user || password === undefined || password === null) return false;
+  const p = String(password).trim();
+  if (!p) return false;
+  if (user.passwordHash) {
+    const [algo, salt, hash] = String(user.passwordHash).split('$');
+    if (algo === 'scrypt' && salt && hash) {
+      const test = crypto.scryptSync(p, salt, 64);
+      const expected = Buffer.from(hash, 'hex');
+      if (expected.length === test.length && crypto.timingSafeEqual(expected, test)) {
+        return true;
+      }
+    }
+  }
+  const rawExpected = String(user.password || user.pin || '1234').trim();
+  return p === rawExpected;
+}
+
 function sanitizeUser(user) {
   if (!user) return null;
-  const { pin, ...safe } = user;
+  const safe = { ...user };
+  SECRET_USER_FIELDS.forEach(f => delete safe[f]);
   return safe;
 }
+
+function publicCorporateDb() {
+  return { ...corporateDb, teamMembers: (corporateDb.teamMembers || []).map(sanitizeUser) };
+}
+
+// Admin override via environment (for cloud hosting, keeps secrets out of git)
+(function applyAdminEnv() {
+  const boss = (corporateDb.teamMembers || []).find(t => t.role === 'head_constructor') || (corporateDb.teamMembers || [])[0];
+  if (!boss) return;
+  let changed = false;
+  if (process.env.ADMIN_TELEGRAM_ID) { boss.telegramChatId = String(process.env.ADMIN_TELEGRAM_ID); changed = true; }
+  if (process.env.ADMIN_TELEGRAM_USERNAME) {
+    boss.telegramUsername = '@' + String(process.env.ADMIN_TELEGRAM_USERNAME).replace(/^@/, '').toLowerCase();
+    changed = true;
+  }
+  if (process.env.ADMIN_PASSWORD && !verifyPassword(boss, process.env.ADMIN_PASSWORD)) {
+    boss.passwordHash = hashPassword(process.env.ADMIN_PASSWORD);
+    delete boss.pin;
+    changed = true;
+  }
+  if (changed) {
+    try { fs.writeFileSync(CORPORATE_FILE, JSON.stringify(corporateDb, null, 2), 'utf8'); } catch (e) {}
+  }
+})();
 
 function getUserPersonalPlan(userId) {
   corporateDb.personalPlans = corporateDb.personalPlans || {};
@@ -642,6 +695,52 @@ async function handleTelegramUpdate(token, update) {
     const fromUser = cb.from || {};
     const userHandle = fromUser.username ? `@${fromUser.username}` : (fromUser.first_name || 'Xodim');
 
+    if (data.startsWith('tglogin_ok_') || data.startsWith('tglogin_no_')) {
+      const approve = data.startsWith('tglogin_ok_');
+      const webCode = data.slice(approve ? 'tglogin_ok_'.length : 'tglogin_no_'.length);
+      const pending = telegramAuthCodes.get(webCode);
+      const fromHandle = fromUser.username ? `@${fromUser.username.toLowerCase()}` : '';
+      let member = corporateDb.teamMembers.find(t =>
+        (t.telegramChatId && t.telegramChatId === String(fromUser.id)) ||
+        (fromHandle && t.telegramUsername && t.telegramUsername.toLowerCase().replace(/^@/, '') === fromHandle.replace(/^@/, ''))
+      );
+
+      // Automatic fallback for admin (@mrqambarov / 6263659922)
+      if (!member && (String(fromUser.id) === '6263659922' || fromHandle === '@mrqambarov' || fromHandle === 'mrqambarov')) {
+        member = corporateDb.teamMembers.find(t => t.id === 'tm_boss') || corporateDb.teamMembers[0];
+        if (member) {
+          member.telegramChatId = String(fromUser.id);
+          member.telegramUsername = '@mrqambarov';
+          saveCorporateDB();
+        }
+      }
+
+      let resultText;
+      if (!pending || pending.expiresAt < Date.now()) {
+        resultText = '⌛ Havola eskirgan. Saytda qaytadan urinib ko‘ring.';
+      } else if (!member) {
+        resultText = '⛔ Profil topilmadi.';
+      } else if (!approve) {
+        telegramAuthCodes.delete(webCode);
+        resultText = '❌ Kirish rad etildi.';
+      } else {
+        pending.userId = member.id;
+        pending.expiresAt = Date.now() + 5 * 60000;
+        resultText = `✅ Tasdiqlandi! <b>${escapeHtml(member.name)}</b>, brauzerga qayting — tizimga kirdingiz.`;
+      }
+
+      await callTelegramApi(token, 'answerCallbackQuery', { callback_query_id: cb.id });
+      if (chatId && cb.message) {
+        await callTelegramApi(token, 'editMessageText', {
+          chat_id: chatId,
+          message_id: cb.message.message_id,
+          parse_mode: 'HTML',
+          text: resultText
+        });
+      }
+      return;
+    }
+
     if (data.startsWith('done_task_')) {
       const taskId = data.replace('done_task_', '');
       const task = db.tasks.find(t => t.id === taskId);
@@ -917,10 +1016,21 @@ async function handleTelegramUpdate(token, update) {
 
     // Command: /login or /kod or /start login_
     if (text === '/login' || text === '/kod' || text.startsWith('/start login_')) {
+      const cleanTg = (tgUsername || '').toLowerCase().replace(/^@/, '');
       let matchedMember = corporateDb.teamMembers.find(t => 
-        (tgUsername && t.telegramUsername && t.telegramUsername.toLowerCase() === tgUsername) ||
+        (cleanTg && t.telegramUsername && t.telegramUsername.toLowerCase().replace(/^@/, '') === cleanTg) ||
         (t.telegramChatId && t.telegramChatId === String(chatId))
       );
+
+      // Automatic fallback for main admin (@mrqambarov / 6263659922)
+      if (!matchedMember && (String(chatId) === '6263659922' || cleanTg === 'mrqambarov')) {
+        matchedMember = corporateDb.teamMembers.find(t => t.id === 'tm_boss') || corporateDb.teamMembers[0];
+        if (matchedMember) {
+          matchedMember.telegramChatId = String(chatId);
+          matchedMember.telegramUsername = '@mrqambarov';
+          saveCorporateDB();
+        }
+      }
 
       if (!matchedMember) {
         await sendTelegramMessage(token, chatId,
@@ -931,34 +1041,57 @@ async function handleTelegramUpdate(token, update) {
         return;
       }
 
-      let code = '';
-      if (text.startsWith('/start login_')) {
-        code = text.replace('/start login_', '').trim();
-      }
-
-      if (!code) {
-        code = Math.floor(100000 + Math.random() * 900000).toString();
-      }
-
       matchedMember.telegramChatId = String(chatId);
       saveCorporateDB();
 
+      // 1-klik: saytdan kelgan havola (/start login_XXX) -> tasdiqlash tugmasi + 6 xonali zaxira kodi
+      if (text.startsWith('/start login_')) {
+        const webCode = text.replace('/start login_', '').trim();
+        const pending = telegramAuthCodes.get(webCode);
+        if (!pending || pending.expiresAt < Date.now()) {
+          await sendTelegramMessage(token, chatId, `⌛ Kirish havolasi eskirgan. Saytda "Telegram orqali kirish" tugmasini qayta bosing.`);
+          return;
+        }
+
+        // Generate 6-digit numeric fallback code linked to this user
+        const numericCode = Math.floor(100000 + Math.random() * 900000).toString();
+        telegramAuthCodes.set(numericCode, {
+          userId: matchedMember.id,
+          expiresAt: Date.now() + 15 * 60000
+        });
+
+        await callTelegramApi(token, 'sendMessage', {
+          chat_id: chatId,
+          parse_mode: 'HTML',
+          text:
+            `🔐 <b>IntelliDay — Kirishni Tasdiqlash</b>\n\n` +
+            `Assalomu alaykum, <b>${escapeHtml(matchedMember.name)}</b>!\n\n` +
+            `Tizimga kirish uchun quyidagi <b>«✅ Tasdiqlash»</b> tugmasini bosing:\n\n` +
+            `Yoki saytda ushbu 6 xonali kodni kiriting:\n` +
+            `🔑 <code>${numericCode}</code>\n\n` +
+            `⏱ Amal qilish muddati: 10 daqiqa.`,
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `tglogin_ok_${webCode}` },
+              { text: '❌ Rad etish', callback_data: `tglogin_no_${webCode}` }
+            ]]
+          }
+        });
+        return;
+      }
+
+      // /login yoki /kod -> 6 xonali kod
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
       telegramAuthCodes.set(code, {
         userId: matchedMember.id,
         expiresAt: Date.now() + 15 * 60000
       });
 
-      const memberName = matchedMember ? matchedMember.name : 'Xodim';
-      const memberRole = matchedMember ? matchedMember.roleTitle : 'Modelxona';
-      const webUrl = `http://${LOCAL_IP}:${currentPort}/?auth=${code}`;
-
       const loginMsg = 
         `🔐 <b>IntelliDay — Tizimga Kirish Kodingiz</b>\n\n` +
-        `Assalomu alaykum, <b>${escapeHtml(memberName)}</b> (${escapeHtml(memberRole)})!\n\n` +
-        `🔑 Sizning 6 xonali bir martalik kodingiz: <code>${code}</code>\n` +
-        `⏱ Ushbu kod 15 daqiqa davomida amal qiladi.\n\n` +
-        `📱 <b>1-klikda tizimga kirish uchun ushbu havolani bosing:</b>\n` +
-        `<a href="${webUrl}">${webUrl}</a>`;
+        `Assalomu alaykum, <b>${escapeHtml(matchedMember.name)}</b>!\n\n` +
+        `🔑 Bir martalik kod: <code>${code}</code>\n` +
+        `⏱ 15 daqiqa amal qiladi. Kodni hech kimga bermang.`;
 
       await sendTelegramMessage(token, chatId, loginMsg);
       return;
@@ -1291,17 +1424,21 @@ const server = http.createServer((req, res) => {
           // Login (username / telegram username / phone) + password (PIN)
           const l = String(login).trim().toLowerCase().replace(/^@/, '');
           const digits = l.replace(/\D/g, '');
-          const candidate = corporateDb.teamMembers.find(t =>
+          let candidate = corporateDb.teamMembers.find(t =>
             (t.login && t.login.toLowerCase() === l) ||
+            (t.id && t.id.toLowerCase() === l) ||
             (t.telegramUsername && t.telegramUsername.toLowerCase().replace(/^@/, '') === l) ||
             (digits.length >= 9 && t.phone && t.phone.replace(/\D/g, '').endsWith(digits))
           );
-          if (candidate && candidate.active !== false && String(password || '') === String(candidate.pin || '1234')) {
+          if (!candidate && (l === 'admin' || l === 'mrqambarov' || l === 'bosh_konstruktor')) {
+            candidate = corporateDb.teamMembers.find(t => t.id === 'tm_boss') || corporateDb.teamMembers[0];
+          }
+          if (candidate && candidate.active !== false && verifyPassword(candidate, password)) {
             matchedUser = candidate;
           }
         } else if (userId) {
           const candidate = corporateDb.teamMembers.find(t => t.id === userId);
-          if (candidate && String(pin || '') === String(candidate.pin || '1234')) {
+          if (candidate && verifyPassword(candidate, pin || password)) {
             matchedUser = candidate;
           }
         }
@@ -1590,7 +1727,7 @@ const server = http.createServer((req, res) => {
   // --- API: Corporate Atelier Data ---
   if (pathname === '/api/corporate/data' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(corporateDb));
+    res.end(JSON.stringify(publicCorporateDb()));
     return;
   }
 
@@ -1600,12 +1737,23 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const cData = JSON.parse(body);
-        if (Array.isArray(cData.teamMembers)) corporateDb.teamMembers = cData.teamMembers;
+        if (Array.isArray(cData.teamMembers)) {
+          // Browser never sees passwords — keep them from the server copy
+          corporateDb.teamMembers = cData.teamMembers.map(m => {
+            const prev = corporateDb.teamMembers.find(p => p.id === m.id) || {};
+            const merged = { ...m };
+            SECRET_USER_FIELDS.forEach(f => {
+              delete merged[f];
+              if (prev[f] !== undefined) merged[f] = prev[f];
+            });
+            return merged;
+          });
+        }
         if (Array.isArray(cData.orders)) corporateDb.orders = cData.orders;
         if (cData.settings) corporateDb.settings = { ...corporateDb.settings, ...cData.settings };
         saveCorporateDB();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: true, data: corporateDb }));
+        res.end(JSON.stringify({ success: true, data: publicCorporateDb() }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: e.message }));

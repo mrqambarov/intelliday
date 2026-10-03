@@ -262,7 +262,7 @@ const AuthManager = {
           <div class="login-divider"><span>yoki botdan olingan kod bilan</span></div>
 
           <form class="login-code-row" onsubmit="event.preventDefault(); AuthManager.submitTgCodeLogin();">
-            <input type="text" id="tg-code-input" class="form-input login-code-input" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+            <input type="text" id="tg-code-input" class="form-input login-code-input" placeholder="123456" maxlength="32" autocomplete="one-time-code">
             <button type="submit" class="btn btn-secondary" id="login-tg-code-btn">Kirish</button>
           </form>
           <div class="login-tg-hint">Botga <code>/login</code> deb yozing — 6 xonali kod keladi.</div>
@@ -390,8 +390,8 @@ const AuthManager = {
 
   async submitTgCodeLogin() {
     const code = (document.getElementById('tg-code-input')?.value || '').trim();
-    if (!/^\d{6}$/.test(code)) {
-      this.showLoginError('6 xonali kodni kiriting');
+    if (!code || code.length < 4) {
+      this.showLoginError('Kodni kiriting');
       return;
     }
     const ok = await this.loginWithCode(code);

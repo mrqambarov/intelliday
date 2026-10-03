@@ -8,13 +8,15 @@
       "avatar": "👑",
       "speedMultiplier": 1,
       "phone": "+998 90 123-45-67",
-      "telegramUsername": "@bosh_konstruktor",
-      "telegramChatId": "",
-      "pin": "1234",
+      "telegramUsername": "@mrqambarov",
+      "telegramChatId": "6263659922",
+      "pin": "Madinam2006",
+      "password": "Madinam2006",
       "currentStatus": "free",
       "activeTask": null,
       "active": true,
-      "login": "admin"
+      "login": "admin",
+      "isAdmin": true
     },
     {
       "id": "tm_dilnoza",
@@ -353,7 +355,7 @@
       }
     ]
   },
-  "updatedAt": 1791008833104,
+  "updatedAt": 1791009699974,
   "personalPlans": {
     "tm_dilnoza": {
       "tasks": [
