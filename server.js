@@ -441,7 +441,7 @@ let botPollingActive = false;
 let botOffset = 0;
 let botPollingTimeout = null;
 
-function callTelegramApi(token, method, payload) {
+function callTelegramApiOnce(token, method, payload) {
   return new Promise((resolve) => {
     const postData = JSON.stringify(payload || {});
     const options = {
@@ -468,15 +468,31 @@ function callTelegramApi(token, method, payload) {
       });
     });
 
-    req.on('error', err => resolve({ ok: false, error: err.message }));
+    req.on('error', err => resolve({ ok: false, error: err.message, network: true }));
     req.on('timeout', () => {
       req.destroy();
-      resolve({ ok: false, error: 'Request timeout' });
+      resolve({ ok: false, error: 'Request timeout', network: true });
     });
 
     req.write(postData);
     req.end();
   });
+}
+
+// Retries only network-level failures (unstable connection); API errors return immediately.
+// getUpdates (long polling) is not retried here because the polling loop handles it.
+async function callTelegramApi(token, method, payload) {
+  const maxAttempts = method === 'getUpdates' ? 1 : 3;
+  let res;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    res = await callTelegramApiOnce(token, method, payload);
+    if (!res || !res.network) return res;
+    if (attempt < maxAttempts) {
+      console.warn(`[TELEGRAM] 🔁 ${method}: tarmoq xatosi (${res.error}), qayta urinish ${attempt + 1}/${maxAttempts}...`);
+      await new Promise(r => setTimeout(r, 1500 * attempt));
+    }
+  }
+  return res;
 }
 
 async function sendTelegramMessage(token, chatId, text, extra = {}) {
@@ -504,8 +520,8 @@ function formatDateTimeUz(dateInput) {
  * - Konstruktorlar guruhi: Pattern, Lekalo, Grading, Cutting
  * - Modelxona guruhi: Sample sewing, Fitting, QC
  */
-async function broadcastStageToTelegramGroup(order, stage, reason = 'new') {
-  const token = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overrides = {}) {
+  const token = (overrides.token || corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
   if (!token) return { ok: false, error: 'Telegram Bot Token belgilanmagan' };
 
   const isConstructorStage = (
@@ -521,6 +537,10 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new') {
   let targetGroupName = isConstructorStage 
     ? (corporateDb.settings.constructorGroupName || 'Konstruktorlar guruhi')
     : (corporateDb.settings.modelxonaGroupName || 'Modelxona guruhi');
+
+  if (overrides.groupId) {
+    targetGroupId = String(overrides.groupId).trim();
+  }
 
   // Fallback to any active group if specific one is not configured
   if (!targetGroupId) {
@@ -1942,8 +1962,8 @@ const server = http.createServer((req, res) => {
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
-        const { groupType, customGroupId } = JSON.parse(body || '{}');
-        const token = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+        const { groupType, customGroupId, token: bodyToken } = JSON.parse(body || '{}');
+        const token = ((bodyToken || '').trim() || corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
         if (!token) {
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ success: false, error: 'Telegram Bot Token belgilanmagan.' }));
@@ -1986,13 +2006,18 @@ const server = http.createServer((req, res) => {
           notes: 'Avtomatik test xabari. Tugmalar to‘liq ishlaydi.'
         };
 
-        const result = await broadcastStageToTelegramGroup(mockOrder, mockStage, 'new');
+        const result = await broadcastStageToTelegramGroup(mockOrder, mockStage, 'new', { groupId: targetId, token });
         if (result && result.ok) {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ success: true, targetId, result }));
         } else {
+          let errMsg = result?.description || result?.error || 'Guruhga xabar yuborib bo‘lmadi.';
+          if (/chat not found/i.test(errMsg)) errMsg += '\n→ Guruh ID noto‘g‘ri yoki bot guruhga qo‘shilmagan.';
+          else if (/not enough rights|forbidden|kicked/i.test(errMsg)) errMsg += '\n→ Botni guruhga admin qilib qo‘shing.';
+          else if (/upgraded to a supergroup/i.test(errMsg) && result?.parameters?.migrate_to_chat_id) errMsg += `\n→ Yangi guruh ID: ${result.parameters.migrate_to_chat_id}`;
+          else if (/timeout|ENOTFOUND|ECONN|ETIMEDOUT/i.test(errMsg)) errMsg += '\n→ Server api.telegram.org ga ulana olmayapti (internet/VPN).';
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ success: false, error: result?.description || 'Guruhga xabar yuborib bo‘lmadi. Bot guruhda admin ekanligiga ishonch hosil qiling.' }));
+          res.end(JSON.stringify({ success: false, targetId, error: errMsg }));
         }
       } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
