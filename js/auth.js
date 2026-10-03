@@ -7,9 +7,26 @@
  * - 🔴 Real-Time Status (BUSY / FREE)
  */
 
+const escapeHtml = window.escapeHtml || function(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 const AuthManager = {
   currentUser: null,
-  usersList: [],
+  usersList: [
+    { id: 'tm_boss', name: 'Bosh Konstruktor', role: 'head_constructor', roleTitle: 'Bosh Konstruktor / Bo‘lim rahbari', avatar: '👑', currentStatus: 'free', activeTask: null, telegramUsername: '@bosh_konstruktor' },
+    { id: 'tm_dilnoza', name: 'Dilnoza Aliyeva', role: 'assistant_constructor', roleTitle: 'Yordamchi Konstruktor (Shogird)', avatar: '📐', currentStatus: 'busy', activeTask: { orderNumber: 'ZAK-103', stageName: 'Murakkab andaza & Drapovka' }, telegramUsername: '@dilnoza_pattern' },
+    { id: 'tm_kamola', name: 'Kamola Rustamova', role: 'assistant_constructor', roleTitle: 'Yordamchi Konstruktor (Andaza & Gradatsiya)', avatar: '📏', currentStatus: 'busy', activeTask: { orderNumber: 'ZAK-102', stageName: 'Andaza loyihalash' }, telegramUsername: '@kamola_andaza' },
+    { id: 'tm_malika', name: 'Malika Usmonova', role: 'sample_tailor', roleTitle: 'Modelxona Usta Chevari (Oliy toifa)', avatar: '🪡', currentStatus: 'free', activeTask: null, telegramUsername: '@malika_chevar' },
+    { id: 'tm_shahnoza', name: 'Shahnoza Karimova', role: 'sample_tailor', roleTitle: 'Namuna Tikuvchi Chevar', avatar: '🧵', currentStatus: 'free', activeTask: null, telegramUsername: '@shahnoza_tikuv' },
+    { id: 'tm_nigora', name: 'Nigora Fayzullayeva', role: 'sample_tailor', roleTitle: 'Namuna Tikuvchi Chevar', avatar: '✂️', currentStatus: 'free', activeTask: null, telegramUsername: '@nigora_namuna' }
+  ],
   activeTab: 'quick', // 'quick' | 'telegram'
   codeCountdownTimer: null,
   isMandatoryLogin: false,
@@ -17,8 +34,18 @@ const AuthManager = {
   async init() {
     await this.fetchUsers();
 
-    // Check URL for 1-click Telegram login ?auth=123456
+    // Check URL parameters for 1-click Telegram login or session reset
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reset_session') || urlParams.get('logout') || urlParams.get('reset')) {
+      localStorage.removeItem('intelliday_auth_user_v1');
+      localStorage.removeItem('intelliday_auth_token_v1');
+      sessionStorage.removeItem('intelliday_session_started');
+      this.currentUser = null;
+      window.history.replaceState({}, document.title, window.location.pathname);
+      this.showLoginScreen(false);
+      return;
+    }
+
     const authCode = urlParams.get('auth');
     if (authCode) {
       await this.loginWithCode(authCode);
@@ -44,12 +71,12 @@ const AuthManager = {
     this.renderHeaderProfile();
     this.applyUserRoleLayout();
 
-    // "birinchi ochilganda oyna login chiqsin"
-    // If not logged in OR if this is the first time the window is opened in this session:
+    // "birinchi oddiy butun ekranda login sahifasi tursin"
+    // If not logged in OR if no active session in this browser tab: show full-screen login immediately!
     if (!this.currentUser || !sessionActive) {
-      setTimeout(() => {
-        this.openLoginModal(true);
-      }, 200);
+      this.showLoginScreen(false);
+    } else {
+      this.hideLoginScreen();
     }
 
     // Listen for SSE updates on corporate sync to update status
@@ -145,38 +172,81 @@ const AuthManager = {
   },
 
   activeRoleFilter: 'all', // 'all' | 'head_constructor' | 'assistant_constructor' | 'sample_tailor'
+  isSwitchMode: false,
 
-  openLoginModal(isMandatory = false) {
-    this.isMandatoryLogin = isMandatory;
-    const modal = document.getElementById('auth-modal');
-    if (!modal) return;
-    this.renderModalContent();
-    modal.classList.add('open');
+  showLoginScreen(isSwitchMode = false) {
+    const screen = document.getElementById('login-screen');
+    const app = document.getElementById('app');
 
-    const closeBtn = document.getElementById('auth-modal-close-btn');
-    if (closeBtn) {
-      closeBtn.style.display = (isMandatory && !this.currentUser) ? 'none' : 'block';
+    this.isSwitchMode = isSwitchMode && !!this.currentUser;
+
+    if (screen) {
+      screen.style.display = 'flex';
+      screen.classList.remove('hidden');
+    }
+    if (app && !this.isSwitchMode) {
+      app.style.display = 'none';
+    }
+
+    this.renderLoginScreen();
+  },
+
+  hideLoginScreen() {
+    const screen = document.getElementById('login-screen');
+    const app = document.getElementById('app');
+
+    if (screen) {
+      screen.style.display = 'none';
+      screen.classList.add('hidden');
+    }
+    if (app) {
+      app.style.display = 'block';
+    }
+
+    this.renderHeaderProfile();
+    this.applyUserRoleLayout();
+
+    if (window.Schedule && typeof window.Schedule.render === 'function') {
+      window.Schedule.render();
+    }
+    if (window.CorporateManager && typeof window.CorporateManager.fetchData === 'function') {
+      window.CorporateManager.fetchData();
     }
   },
 
+  // Compatibility aliases
+  openLoginModal(isMandatory = false) {
+    this.showLoginScreen(true);
+  },
+
   closeLoginModal() {
-    const modal = document.getElementById('auth-modal');
-    if (modal) modal.classList.remove('open');
-    this.isMandatoryLogin = false;
+    this.hideLoginScreen();
+  },
+
+  guestLogin() {
+    sessionStorage.setItem('intelliday_session_started', 'true');
+    this.hideLoginScreen();
+    if (window.App && typeof window.App.showToast === 'function') {
+      window.App.showToast('👀 Mehmon rejimida tizimga kirdingiz');
+    }
   },
 
   setAuthTab(tab) {
     this.activeTab = tab;
-    this.renderModalContent();
+    this.renderLoginScreen();
   },
 
   setRoleFilter(role) {
     this.activeRoleFilter = role;
-    this.renderModalContent();
+    this.renderLoginScreen();
   },
 
   renderModalContent() {
-    const container = document.getElementById('auth-modal-body');
+    this.renderLoginScreen();
+  },
+
+  renderLoginScreen() {
+    const container = document.getElementById('login-screen-content') || document.getElementById('auth-modal-body');
     if (!container) return;
 
     // Filter users list based on role
@@ -189,7 +259,29 @@ const AuthManager = {
     const constructorCount = this.usersList.filter(u => u.role === 'assistant_constructor').length;
     const tailorCount = this.usersList.filter(u => u.role === 'sample_tailor').length;
 
-    let html = `
+    let html = '';
+
+    // If user is already authenticated and just opened switcher:
+    if (this.currentUser) {
+      const cleanCurName = (this.currentUser.name || '').replace(/\(Siz\)/i, '').trim();
+      html += `
+        <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 14px; padding: 0.85rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.6rem;">${this.currentUser.avatar || '👤'}</span>
+            <div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Hozirgi faol profil</div>
+              <strong style="color: #fff; font-size: 1rem;">${escapeHtml(cleanCurName)}</strong>
+              <span class="user-role-badge ${this.currentUser.role}" style="margin-left: 0.4rem; font-size: 0.72rem;">${escapeHtml(this.currentUser.roleTitle || this.currentUser.role)}</span>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="AuthManager.hideLoginScreen()" style="padding: 0.55rem 1.25rem; font-size: 0.88rem; font-weight: 700;">
+            ↩️ Ish stoliga qaytish
+          </button>
+        </div>
+      `;
+    }
+
+    html += `
       <!-- Navigation Tabs (Team vs Telegram) -->
       <div class="auth-tabs-nav">
         <button class="auth-tab-btn ${this.activeTab === 'quick' ? 'active' : ''}" onclick="AuthManager.setAuthTab('quick')">
@@ -253,7 +345,7 @@ const AuthManager = {
                   <div class="auth-card-details">
                     <div class="auth-card-header-line">
                       <h4 class="auth-card-name">${escapeHtml(cleanName)}</h4>
-                      ${isCurrent ? '<span class="auth-current-pill">Siz</span>' : ''}
+                      ${isCurrent ? '<span class="auth-current-pill">Faol</span>' : ''}
                     </div>
                     <div class="auth-card-role ${roleBadgeClass}">${escapeHtml(roleBadgeTitle)}</div>
                     
@@ -353,22 +445,29 @@ const AuthManager = {
           ${this.currentUser ? `
             <span style="font-size: 0.82rem; color: var(--text-muted);">Hozirgi profil:</span>
             <strong style="color: #fff; font-size: 0.86rem; margin-left: 0.35rem;">
-              ${this.currentUser.avatar} ${escapeHtml(this.currentUser.name)}
+              ${this.currentUser.avatar || '👤'} ${escapeHtml(this.currentUser.name)}
             </strong>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.logout()" style="margin-left: 0.5rem; font-size: 0.75rem; padding: 0.2rem 0.6rem;">
-              Chiqish
+            <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.logout()" style="margin-left: 0.6rem; font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+              🚪 Chiqish
             </button>
           ` : `
-            <span style="font-size: 0.82rem; color: var(--text-muted);">Tizimga kirmasdan:</span>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.closeLoginModal()" style="margin-left: 0.5rem; font-size: 0.8rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.guestLogin()" style="font-size: 0.82rem; padding: 0.4rem 0.85rem;">
               👀 Mehmon sifatida ko‘rish
             </button>
           `}
         </div>
 
-        <button type="button" class="btn btn-secondary" onclick="AuthManager.closeLoginModal()" style="padding: 0.45rem 1rem; font-size: 0.84rem;">
-          Yopish
-        </button>
+        <div>
+          ${this.currentUser ? `
+            <button type="button" class="btn btn-secondary" onclick="AuthManager.hideLoginScreen()" style="padding: 0.45rem 1.15rem; font-size: 0.84rem;">
+              ↩️ Dasturga qaytish
+            </button>
+          ` : `
+            <span style="font-size: 0.78rem; color: var(--text-muted);">
+              🔒 IntelliDay Atelier & Studio v2.4
+            </span>
+          `}
+        </div>
       </div>
     `;
 
@@ -592,8 +691,13 @@ const AuthManager = {
   logout() {
     localStorage.removeItem('intelliday_auth_user_v1');
     localStorage.removeItem('intelliday_auth_token_v1');
+    sessionStorage.removeItem('intelliday_session_started');
     this.currentUser = null;
-    this.openLoginModal();
+    this.renderHeaderProfile();
+    this.showLoginScreen(false);
+    if (window.App && typeof window.App.showToast === 'function') {
+      window.App.showToast('🚪 Tizimdan muvaffaqiyatli chiqildi');
+    }
   },
 
   // --------------------------------------------------------------------------

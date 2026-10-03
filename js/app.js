@@ -178,10 +178,16 @@ const App = {
     const coachMsgEl = document.getElementById('ai-coach-message');
     if (!coachMsgEl) return;
 
-    const tasks = window.Storage.getTasks();
-    const habits = window.Storage.getHabits();
-    const advice = window.SmartAssistant.generateCoachAdvice(tasks, habits);
-    coachMsgEl.textContent = advice;
+    try {
+      const tasks = window.Storage ? window.Storage.getTasks() : [];
+      const habits = window.Storage ? window.Storage.getHabits() : [];
+      const advice = (window.SmartAssistant && typeof window.SmartAssistant.generateCoachAdvice === 'function')
+        ? window.SmartAssistant.generateCoachAdvice(tasks, habits)
+        : 'Bugungi vazifalaringizni rejalashtiring va samaradorlikni oshiring!';
+      coachMsgEl.textContent = advice;
+    } catch(e) {
+      console.warn('updateSidebarCoach error:', e);
+    }
   },
 
   // Process AI Assistant Input

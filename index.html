@@ -23,9 +23,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="./css/index.css">
-  <link rel="stylesheet" href="./css/components.css">
-  <link rel="stylesheet" href="./css/responsive.css">
+  <link rel="stylesheet" href="./css/index.css?v=2.5">
+  <link rel="stylesheet" href="./css/components.css?v=2.5">
+  <link rel="stylesheet" href="./css/responsive.css?v=2.5">
 </head>
 <body>
 
@@ -36,7 +36,35 @@
   <!-- Confetti Canvas -->
   <canvas id="confetti-canvas"></canvas>
 
-  <div id="app">
+  <!-- DEDICATED FULLSCREEN LOGIN SCREEN (Birinchi ochilganda butun ekranda) -->
+  <div id="login-screen" class="fullscreen-login-page" style="display: flex; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 999999; background: radial-gradient(circle at 50% 12%, #18233c 0%, #0a0e1a 55%, #05070e 100%); overflow-y: auto; padding: 2.5rem 1.5rem; box-sizing: border-box;">
+    <div class="login-page-ambient-orb orb-a"></div>
+    <div class="login-page-ambient-orb orb-b"></div>
+
+    <div class="login-page-container">
+      <!-- Top Branding Header -->
+      <div class="login-page-header">
+        <div class="login-page-logo-wrap">
+          <span class="login-page-logo-icon">👑</span>
+        </div>
+        <div class="login-badge-pill">
+          <span class="pulse-dot"></span>
+          <span>IntelliDay Atelier & Design Studio</span>
+        </div>
+        <h1 class="login-page-main-title">Modelxona & Konstruktorlik Markazi</h1>
+        <p class="login-page-subtitle">
+          Kun tartibi, andaza rejalari va namunaviy tikuv vazifalari boshqaruvi. Ishni boshlash uchun profilingizni tanlang:
+        </p>
+      </div>
+
+      <!-- Main Login Container (Rendered by AuthManager) -->
+      <div id="login-screen-content" class="login-page-content-box">
+        <!-- Rendered by AuthManager.renderLoginScreen() -->
+      </div>
+    </div>
+  </div>
+
+  <div id="app" style="display: none;">
     <!-- Top Header -->
     <header class="app-header">
       <div class="container header-inner">
@@ -1014,49 +1042,21 @@
       </div>
     </div>
 
-    <!-- Auth & Multi-User Modal (Luxury Atelier Entrance Portal) -->
-    <div class="modal-backdrop auth-portal-backdrop" id="auth-modal">
-      <div class="auth-portal-card glass-card">
-        <!-- Close button if user wants to switch without logout or guest preview -->
-        <button class="auth-portal-close-btn" id="auth-modal-close-btn" onclick="AuthManager.closeLoginModal()" title="Yopish">✕</button>
 
-        <!-- Brand Hero Top -->
-        <div class="auth-portal-header">
-          <div class="auth-brand-aura">
-            <span class="auth-brand-icon">👑</span>
-          </div>
-          <div class="auth-portal-titles">
-            <div class="auth-portal-badge">
-              <span class="pulse-dot"></span>
-              <span>IntelliDay Atelier & Design Studio</span>
-            </div>
-            <h2 class="auth-portal-title">Modelxona & Konstruktorlik Portali</h2>
-            <p class="auth-portal-subtitle">
-              Kun tartibi, andaza rejalari va namunaviy tikuv vazifalari boshqaruvi
-            </p>
-          </div>
-        </div>
-
-        <!-- Dynamic Portal Body -->
-        <div id="auth-modal-body" class="auth-portal-body">
-          <!-- Populated by AuthManager.renderModalContent() -->
-        </div>
-      </div>
-    </div>
 
   </div>
 
   <!-- Scripts -->
-  <script src="./js/storage.js"></script>
-  <script src="./js/notifications.js"></script>
-  <script src="./js/assistant.js"></script>
-  <script src="./js/schedule.js"></script>
-  <script src="./js/pomodoro.js"></script>
-  <script src="./js/habits.js"></script>
-  <script src="./js/views.js"></script>
-  <script src="./js/auth.js"></script>
-  <script src="./js/corporate.js"></script>
-  <script src="./js/app.js"></script>
+  <script src="./js/storage.js?v=2.5"></script>
+  <script src="./js/notifications.js?v=2.5"></script>
+  <script src="./js/assistant.js?v=2.5"></script>
+  <script src="./js/schedule.js?v=2.5"></script>
+  <script src="./js/pomodoro.js?v=2.5"></script>
+  <script src="./js/habits.js?v=2.5"></script>
+  <script src="./js/views.js?v=2.5"></script>
+  <script src="./js/auth.js?v=2.5"></script>
+  <script src="./js/corporate.js?v=2.5"></script>
+  <script src="./js/app.js?v=2.5"></script>
 
 </body>
 </html>

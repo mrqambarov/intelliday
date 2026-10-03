@@ -118,7 +118,7 @@ class SmartAssistant {
         message: '✅ Kun tartibingiz ayni damda to‘liq me’yorda, o‘zgartirish talab etilmadi.'
       };
     }
-  },
+  }
 
   // Shift all remaining uncompleted tasks to tomorrow
   shiftRemainingToTomorrow() {
@@ -144,7 +144,7 @@ class SmartAssistant {
       count: tasks.length,
       message: `🌙 ${tasks.length} ta reja ertangi kunga qulay vaqtlarga ko‘chirildi. Endi xotirjam dam oling!`
     };
-  },
+  }
 
   // Magic Day-Plan Generator (Pre-built Circadian Templates)
   generateMagicPlan(theme = 'balanced') {
@@ -190,7 +190,7 @@ class SmartAssistant {
     }));
 
     return tasksToAdd;
-  },
+  }
 
   applyMagicPlan(theme = 'balanced') {
     const tasks = this.generateMagicPlan(theme);
@@ -203,7 +203,7 @@ class SmartAssistant {
       count: tasks.length,
       message: `✨ AI Sehrli Rejasi: ${tasks.length} ta optimal vazifa bugungi kuningizga qo‘shildi!`
     };
-  },
+  }
 
   // Dual Brain AI: Real Gemini API + Built-in Offline Fallback
   async askAI(promptText) {
@@ -219,7 +219,7 @@ class SmartAssistant {
     }
     // Offline AI Engine
     return this.processOfflineAI(promptText);
-  },
+  }
 
   async callGeminiAPI(apiKey, userPrompt) {
     const tasks = window.Storage.getTasks();
@@ -259,7 +259,7 @@ Sen IntelliDay ilovasining professional o‘zbek tilidagi aqlli shaxsiy yordamch
       return data.candidates[0].content.parts[0].text.trim();
     }
     throw new Error('Invalid Gemini API response');
-  },
+  }
 
   processOfflineAI(rawText) {
     const text = rawText.trim().toLowerCase();
@@ -288,7 +288,7 @@ Sen IntelliDay ilovasining professional o‘zbek tilidagi aqlli shaxsiy yordamch
 
     // Default coaching advice
     return this.generateCoachAdvice(tasks, window.Storage.getHabits());
-  },
+  }
 
   findFreeSlotsText(tasks) {
     if (tasks.length === 0) {
@@ -301,7 +301,7 @@ Sen IntelliDay ilovasining professional o‘zbek tilidagi aqlli shaxsiy yordamch
       lines.push(`• ${t.time} — ${t.title} (${t.duration}m)`);
     });
     return lines.join('\n') + '\nVazifalar orasidagi bo‘shliqlardan unumli foydalanishingiz mumkin!';
-  },
+  }
 
   // Parse natural language command
   parseInput(rawText) {

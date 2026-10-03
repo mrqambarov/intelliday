@@ -327,14 +327,27 @@
     "lunchStart": 13,
     "lunchEnd": 14,
     "delayBufferPercent": 15,
-    "constructorGroupId": "-100111222333",
-    "constructorGroupName": "Konstruktorlar Guruhi (Lekalo)",
-    "modelxonaGroupId": "-100444555666",
-    "modelxonaGroupName": "Modelxona Guruhi (Etalon)",
+    "constructorGroupId": "-1003004877945",
+    "constructorGroupName": "Konstruktorlar",
+    "modelxonaGroupId": "-1004371833004",
+    "modelxonaGroupName": "Modelxona",
     "telegramBotToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0",
-    "connectedGroups": []
+    "connectedGroups": [
+      {
+        "id": "-1003004877945",
+        "title": "Konstruktorlar",
+        "type": "supergroup",
+        "lastActive": 1791008453699
+      },
+      {
+        "id": "-1004371833004",
+        "title": "Modelxona",
+        "type": "supergroup",
+        "lastActive": 1791008833104
+      }
+    ]
   },
-  "updatedAt": 1791006094761,
+  "updatedAt": 1791008833104,
   "personalPlans": {
     "tm_dilnoza": {
       "tasks": [
