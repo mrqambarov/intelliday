@@ -90,6 +90,32 @@
       "recurring": "daily",
       "notes": "Kamida 20 sahifa mutolaa",
       "updatedAt": 1791009572199
+    },
+    {
+      "id": "task-1791110738186",
+      "title": "App.openCuttingRulesModal()",
+      "time": "16:00",
+      "duration": 30,
+      "category": "personal",
+      "priority": "medium",
+      "date": "2026-10-04",
+      "completed": false,
+      "recurring": "none",
+      "notes": "Aqlli AI orqali kiritildi",
+      "updatedAt": 1791110738186
+    },
+    {
+      "id": "task-1791112107122",
+      "title": "Hisobot",
+      "time": "15:00",
+      "duration": 30,
+      "category": "work",
+      "priority": "high",
+      "date": "2026-10-05",
+      "completed": false,
+      "recurring": "none",
+      "notes": "Aqlli AI orqali kiritildi",
+      "updatedAt": 1791112112314
     }
   ],
   "habits": [
@@ -98,32 +124,32 @@
       "title": "2 litr toza suv ichish",
       "icon": "💧",
       "streak": 6,
-      "doneToday": true,
-      "lastDoneDate": "2026-10-03"
+      "doneToday": false,
+      "lastDoneDate": null
     },
     {
       "id": "h-2",
       "title": "30 daqiqa kitob mutolaasi",
       "icon": "📖",
       "streak": 13,
-      "doneToday": true,
-      "lastDoneDate": "2026-10-03"
+      "doneToday": false,
+      "lastDoneDate": null
     },
     {
       "id": "h-3",
       "title": "Ertalabki yugurish / mashq",
       "icon": "🏃‍♂️",
       "streak": 5,
-      "doneToday": true,
-      "lastDoneDate": "2026-10-03"
+      "doneToday": false,
+      "lastDoneDate": null
     },
     {
       "id": "h-4",
       "title": "Telefonni 22:30 da o‘chirish",
       "icon": "🌙",
       "streak": 4,
-      "doneToday": true,
-      "lastDoneDate": "2026-10-03"
+      "doneToday": false,
+      "lastDoneDate": null
     }
   ],
   "habitLogs": {},
@@ -139,5 +165,5 @@
     "pomodoroBreakTime": 5,
     "telegramBotToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0"
   },
-  "updatedAt": 1791009604464
+  "updatedAt": 1791112112716
 }

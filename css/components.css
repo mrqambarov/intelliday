@@ -441,6 +441,46 @@
   color: var(--text-muted);
 }
 
+.task-card.priority-urgent,
+.task-card.urgent-glow {
+  border-left-color: #ef4444 !important;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.16) 0%, rgba(30, 41, 59, 0.6) 100%) !important;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.28) !important;
+  border-right: 1px solid rgba(239, 68, 68, 0.35) !important;
+}
+
+.task-card.priority-urgent .task-title,
+.task-card.urgent-glow .task-title {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.badge-urgent {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.5px !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.45) !important;
+  animation: urgentPulse 1.8s infinite ease-in-out !important;
+}
+
+@keyframes urgentPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  60% { transform: scale(1.04); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.week-task-item.priority-urgent {
+  border-left-color: #ef4444 !important;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(30, 41, 59, 0.7) 100%) !important;
+}
+
 .task-card.priority-high {
   border-left-color: var(--accent-rose);
 }
@@ -3621,6 +3661,170 @@ kbd {
   border-left-color: #10b981;
   background: rgba(16, 185, 129, 0.04);
 }
+
+/* ==========================================================================
+   Account & Profile Settings Modal Styles
+   ========================================================================== */
+.avatar-img-round {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.account-avatar-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.account-avatar-wrapper {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.account-avatar-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #312e81, #0f172a);
+  border: 2px solid rgba(99, 102, 241, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.account-avatar-upload-trigger {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  border: 2px solid #0f172a;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.account-avatar-upload-trigger:hover {
+  transform: scale(1.1);
+  background: #4f46e5;
+}
+
+.account-avatar-info {
+  flex: 1;
+}
+
+.account-avatar-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.acc-emoji-picker-drawer {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  margin-bottom: 1.25rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.acc-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 0.4rem;
+}
+
+.acc-emoji-item {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.acc-emoji-item:hover {
+  background: rgba(99, 102, 241, 0.25);
+  transform: scale(1.1);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.account-nav-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 1.15rem;
+  padding-bottom: 0.4rem;
+}
+
+.account-nav-tab {
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.account-nav-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.account-nav-tab.active {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.account-tab-pane {
+  animation: fadeIn 0.2s ease;
+}
+
+.account-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  color: #a5b4fc;
+  margin-bottom: 0.35rem;
+}
+
 
 
 

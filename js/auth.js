@@ -61,6 +61,9 @@ const AuthManager = {
               this.renderWorkerDashboard();
             }
           }
+          if (this.currentUser && window.Storage && typeof window.Storage.loadUserPlan === 'function') {
+            window.Storage.loadUserPlan(this.currentUser.id);
+          }
         } catch (err) {}
       });
     }
@@ -90,9 +93,26 @@ const AuthManager = {
       return;
     }
 
-    if (avatarEl) avatarEl.textContent = this.currentUser.avatar || '👤';
+    if (avatarEl) {
+      if (this.currentUser.avatar && (this.currentUser.avatar.startsWith('data:') || this.currentUser.avatar.startsWith('http') || this.currentUser.avatar.startsWith('/'))) {
+        avatarEl.innerHTML = `<img src="${this.currentUser.avatar}" alt="Avatar" class="avatar-img-round">`;
+      } else {
+        avatarEl.textContent = this.currentUser.avatar || '👤';
+      }
+    }
     const cleanName = (this.currentUser.name || '').replace(/\(Siz\)/i, '').trim();
     if (nameEl) nameEl.textContent = cleanName;
+
+    const settingsAvatarEl = document.getElementById('settings-acc-avatar-preview');
+    const settingsNameEl = document.getElementById('settings-acc-name-preview');
+    if (settingsAvatarEl) {
+      if (this.currentUser.avatar && (this.currentUser.avatar.startsWith('data:') || this.currentUser.avatar.startsWith('http') || this.currentUser.avatar.startsWith('/'))) {
+        settingsAvatarEl.innerHTML = `<img src="${this.currentUser.avatar}" alt="Avatar" class="avatar-img-round" style="width: 36px; height: 36px; display: inline-block;">`;
+      } else {
+        settingsAvatarEl.textContent = this.currentUser.avatar || '👤';
+      }
+    }
+    if (settingsNameEl) settingsNameEl.textContent = cleanName;
 
     const isBusy = this.currentUser.currentStatus === 'busy';
     const isPaused = this.currentUser.currentStatus === 'paused';
@@ -608,13 +628,15 @@ const AuthManager = {
       html += `<div style="display: flex; flex-direction: column; gap: 0.75rem;">`;
       incomingPending.forEach(st => {
         const isAccepted = st.status === 'accepted';
+        const isUrgent = st.priority === 'urgent';
         html += `
-          <div class="glass-card incoming-task-card ${isAccepted ? 'accepted-card' : ''}">
+          <div class="glass-card incoming-task-card ${isAccepted ? 'accepted-card' : ''}" style="${isUrgent ? 'border-color: rgba(239,68,68,0.45); box-shadow: 0 0 16px rgba(239,68,68,0.22);' : ''}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
               <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
                   <span class="order-num-pill">${escapeHtml(st.orderNumber)}</span>
                   <h4 style="margin: 0; font-size: 1.05rem; color: #fff;">${escapeHtml(st.name)}</h4>
+                  ${isUrgent ? '<span class="badge badge-urgent">🚨 JUDA ZARUR</span>' : ''}
                   ${isAccepted ? '<span class="badge" style="background: rgba(16,185,129,0.15); color: #34d399;">✓ Qabul qilingan</span>' : '<span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;">⏳ Qabul qilish kutilmoqda</span>'}
                 </div>
                 <div style="font-size: 0.85rem; color: var(--text-secondary);">
@@ -751,6 +773,328 @@ const AuthManager = {
       }
     } catch(e){
       alert('Vazifani topshirishda xatolik yuz berdi');
+    }
+  },
+
+  // ==========================================================================
+  // Akkaunt & Profil Sozlamalari Boshqaruvi
+  // ==========================================================================
+  async openAccountModal() {
+    if (!this.currentUser) {
+      this.showLoginScreen(false);
+      return;
+    }
+
+    const modal = document.getElementById('account-settings-modal');
+    if (!modal) return;
+
+    // Fresh data from server
+    try {
+      const res = await fetch(`/api/user/profile?userId=${encodeURIComponent(this.currentUser.id)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.user) {
+          this.currentUser = { ...this.currentUser, ...json.user };
+          localStorage.setItem('intelliday_auth_user_v1', JSON.stringify(this.currentUser));
+          if (json.botUsername) this.cachedBotUsername = json.botUsername;
+        }
+      }
+    } catch (e) {}
+
+    const u = this.currentUser;
+
+    // Avatar preview
+    const previewEl = document.getElementById('acc-avatar-preview');
+    const avatarValEl = document.getElementById('acc-avatar-value');
+    if (previewEl) {
+      if (u.avatar && (u.avatar.startsWith('data:') || u.avatar.startsWith('http') || u.avatar.startsWith('/'))) {
+        previewEl.innerHTML = `<img src="${u.avatar}" alt="Avatar" class="avatar-img-round">`;
+      } else {
+        previewEl.textContent = u.avatar || '👤';
+      }
+    }
+    if (avatarValEl) avatarValEl.value = u.avatar || '👤';
+
+    // Header info
+    const cleanName = (u.name || '').replace(/\(Siz\)/i, '').trim();
+    const previewNameEl = document.getElementById('acc-preview-name');
+    if (previewNameEl) previewNameEl.textContent = cleanName;
+
+    const roleBadgeEl = document.getElementById('acc-role-badge');
+    if (roleBadgeEl) {
+      let roleText = 'Xodim';
+      if (u.role === 'head_constructor') roleText = 'Boshliq';
+      else if (u.role === 'assistant_constructor') roleText = 'Konstruktor';
+      else if (u.role === 'sample_tailor') roleText = 'Chevar';
+      else if (u.role === 'cutter') roleText = 'Bichuvchi';
+      roleBadgeEl.textContent = roleText;
+      roleBadgeEl.className = `user-role-badge ${u.role}`;
+    }
+
+    const loginBadgeEl = document.getElementById('acc-login-badge');
+    if (loginBadgeEl) loginBadgeEl.textContent = `@${u.login || u.id}`;
+
+    // General inputs
+    const nameInput = document.getElementById('acc-name-input');
+    if (nameInput) nameInput.value = cleanName;
+
+    const phoneInput = document.getElementById('acc-phone-input');
+    if (phoneInput) phoneInput.value = u.phone || '';
+
+    const roleTitleDisplay = document.getElementById('acc-role-title-display');
+    if (roleTitleDisplay) roleTitleDisplay.value = u.roleTitle || 'Xodim';
+
+    const loginDisplay = document.getElementById('acc-login-display');
+    if (loginDisplay) loginDisplay.value = u.login || u.id;
+
+    // Telegram inputs & status
+    const tgUserInput = document.getElementById('acc-telegram-username');
+    if (tgUserInput) tgUserInput.value = u.telegramUsername || '';
+
+    const tgStatusBadge = document.getElementById('acc-tg-status-badge');
+    if (tgStatusBadge) {
+      if (u.telegramChatId) {
+        tgStatusBadge.textContent = '🟢 Ulangan';
+        tgStatusBadge.style.background = 'rgba(16,185,129,0.2)';
+        tgStatusBadge.style.color = '#34d399';
+      } else {
+        tgStatusBadge.textContent = '🟡 Ulanmagan';
+        tgStatusBadge.style.background = 'rgba(245,158,11,0.2)';
+        tgStatusBadge.style.color = '#fbbf24';
+      }
+    }
+
+    const botLink = document.getElementById('acc-tg-bot-link');
+    if (botLink) {
+      const botName = this.cachedBotUsername || 'IntelliDayBot';
+      botLink.href = `https://t.me/${botName}`;
+    }
+
+    // Passwords clear
+    const curPass = document.getElementById('acc-current-password');
+    if (curPass) curPass.value = '';
+    const newPass = document.getElementById('acc-new-password');
+    if (newPass) newPass.value = '';
+    const confPass = document.getElementById('acc-confirm-password');
+    if (confPass) confPass.value = '';
+
+    // Preferences
+    if (window.Storage) {
+      const s = window.Storage.getSettings();
+      const soundTgl = document.getElementById('acc-sound-toggle');
+      if (soundTgl) soundTgl.checked = !!s.soundEnabled;
+      const notifTgl = document.getElementById('acc-notif-toggle');
+      if (notifTgl) notifTgl.checked = !!s.notificationsEnabled;
+    }
+
+    // Default tab
+    this.switchAccountTab('general');
+
+    // Hide emoji drawer
+    const drawer = document.getElementById('acc-emoji-picker-drawer');
+    if (drawer) drawer.style.display = 'none';
+
+    modal.classList.add('open');
+  },
+
+  closeAccountModal() {
+    const modal = document.getElementById('account-settings-modal');
+    if (modal) modal.classList.remove('open');
+    const drawer = document.getElementById('acc-emoji-picker-drawer');
+    if (drawer) drawer.style.display = 'none';
+  },
+
+  switchAccountTab(tabName) {
+    document.querySelectorAll('.account-nav-tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.account-tab-pane').forEach(p => {
+      p.style.display = 'none';
+    });
+    const target = document.getElementById(`acc-pane-${tabName}`);
+    if (target) target.style.display = 'block';
+  },
+
+  toggleEmojiPicker() {
+    const drawer = document.getElementById('acc-emoji-picker-drawer');
+    if (drawer) {
+      drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    }
+  },
+
+  selectAvatarEmoji(emoji) {
+    const previewEl = document.getElementById('acc-avatar-preview');
+    const avatarValEl = document.getElementById('acc-avatar-value');
+    if (previewEl) previewEl.innerHTML = emoji;
+    if (avatarValEl) avatarValEl.value = emoji;
+    const drawer = document.getElementById('acc-emoji-picker-drawer');
+    if (drawer) drawer.style.display = 'none';
+  },
+
+  resetAvatarToDefault() {
+    if (!this.currentUser) return;
+    let defEmoji = '👤';
+    if (this.currentUser.role === 'head_constructor') defEmoji = '👑';
+    else if (this.currentUser.role === 'assistant_constructor') defEmoji = (this.currentUser.id || '').includes('qobil') ? '📏' : '📐';
+    else if (this.currentUser.role === 'sample_tailor') defEmoji = '🪡';
+    else if (this.currentUser.role === 'cutter') defEmoji = '✂️';
+
+    this.selectAvatarEmoji(defEmoji);
+  },
+
+  handleAvatarFileUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Iltimos, rasm faylini tanlang (JPG, PNG, WEBP)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Square 200x200 canvas with center-crop
+        const canvas = document.createElement('canvas');
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+        const base64Url = canvas.toDataURL('image/jpeg', 0.85);
+
+        const previewEl = document.getElementById('acc-avatar-preview');
+        const avatarValEl = document.getElementById('acc-avatar-value');
+        if (previewEl) {
+          previewEl.innerHTML = `<img src="${base64Url}" alt="Avatar" class="avatar-img-round">`;
+        }
+        if (avatarValEl) {
+          avatarValEl.value = base64Url;
+        }
+
+        const drawer = document.getElementById('acc-emoji-picker-drawer');
+        if (drawer) drawer.style.display = 'none';
+
+        if (window.App && typeof window.App.showToast === 'function') {
+          window.App.showToast('📷 Rasm yuklandi! Saqlash uchun "Saqlash" tugmasini bosing.');
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  },
+
+  togglePassField(id) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+  },
+
+  syncPref(key, val) {
+    if (!window.Storage) return;
+    if (key === 'sound') {
+      window.Storage.updateSettings({ soundEnabled: !!val });
+      const setSound = document.getElementById('set-sound');
+      if (setSound) setSound.checked = !!val;
+    } else if (key === 'notif') {
+      window.Storage.updateSettings({ notificationsEnabled: !!val });
+      const setNotif = document.getElementById('set-notif');
+      if (setNotif) setNotif.checked = !!val;
+    }
+  },
+
+  async saveAccountSettings(event) {
+    if (event) event.preventDefault();
+    if (!this.currentUser) return;
+
+    const name = (document.getElementById('acc-name-input')?.value || '').trim();
+    const phone = (document.getElementById('acc-phone-input')?.value || '').trim();
+    const telegramUsername = (document.getElementById('acc-telegram-username')?.value || '').trim();
+    const avatar = (document.getElementById('acc-avatar-value')?.value || '').trim();
+
+    const currentPassword = (document.getElementById('acc-current-password')?.value || '').trim();
+    const newPassword = (document.getElementById('acc-new-password')?.value || '').trim();
+    const confirmPassword = (document.getElementById('acc-confirm-password')?.value || '').trim();
+
+    if (!name) {
+      alert('Ism va familiya kiritilishi shart!');
+      return;
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 4) {
+        alert('Yangi parol kamida 4 ta belgidan iborat bo‘lishi kerak!');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        alert('Yangi parollar bir-biriga mos kelmadi. Iltimos, qayta tekshiring.');
+        return;
+      }
+      if (!currentPassword) {
+        alert('Parolni yangilash uchun joriy (hozirgi) parolingizni kiriting!');
+        return;
+      }
+    }
+
+    const saveBtn = document.getElementById('acc-save-btn');
+    const origBtnText = saveBtn ? saveBtn.textContent : '';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ Saqlanmoqda...';
+    }
+
+    try {
+      const payload = {
+        userId: this.currentUser.id,
+        name,
+        phone,
+        telegramUsername,
+        avatar
+      };
+      if (newPassword) {
+        payload.currentPassword = currentPassword;
+        payload.newPassword = newPassword;
+      }
+
+      const res = await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Saqlashda xatolik yuz berdi');
+      }
+
+      // Update current user
+      this.currentUser = { ...this.currentUser, ...data.user };
+      localStorage.setItem('intelliday_auth_user_v1', JSON.stringify(this.currentUser));
+
+      this.renderHeaderProfile();
+      this.applyUserRoleLayout();
+
+      if (window.App && typeof window.App.showToast === 'function') {
+        window.App.showToast('✅ Akkaunt sozlamalari muvaffaqiyatli saqlandi!');
+      }
+      this.closeAccountModal();
+
+      if (newPassword && window.App && typeof window.App.showToast === 'function') {
+        window.App.showToast('🔐 Parolingiz muvaffaqiyatli yangilandi!');
+      }
+    } catch (e) {
+      alert('Xatolik: ' + e.message);
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = origBtnText;
+      }
     }
   }
 };

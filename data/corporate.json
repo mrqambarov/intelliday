@@ -22,7 +22,7 @@
       "id": "tm_oqilbek",
       "name": "Oqilbek",
       "role": "assistant_constructor",
-      "roleTitle": "Yordamchi Konstruktor (Andaza & Lekalo)",
+      "roleTitle": "Yordamchi Konstruktor (Andaza & Raskladka)",
       "avatar": "📐",
       "speedMultiplier": 1,
       "phone": "+998 90 100-01-01",
@@ -39,7 +39,7 @@
       "id": "tm_qobiljon",
       "name": "Qobiljon",
       "role": "assistant_constructor",
-      "roleTitle": "Yordamchi Konstruktor (Gradatsiya)",
+      "roleTitle": "Yordamchi Konstruktor (Gradatsiya & Raskladka)",
       "avatar": "📏",
       "speedMultiplier": 1,
       "phone": "+998 90 100-02-02",
@@ -124,7 +124,7 @@
       "id": "tm_nozima",
       "name": "Nozima",
       "role": "cutter",
-      "roleTitle": "Bichuvchi (Kroy & Dublyaj)",
+      "roleTitle": "Modelxona Namunaviy Bichuvchisi",
       "avatar": "✂️",
       "speedMultiplier": 1,
       "phone": "+998 90 300-01-01",
@@ -141,7 +141,7 @@
       "id": "tm_charos",
       "name": "Charos",
       "role": "cutter",
-      "roleTitle": "Bichuvchi (Kroy & Dublyaj)",
+      "roleTitle": "Modelxona Namunaviy Bichuvchisi",
       "avatar": "✂️",
       "speedMultiplier": 1,
       "phone": "+998 90 300-02-02",
@@ -156,6 +156,47 @@
     }
   ],
   "orders": [
+    {
+      "id": "ord_1791108625567_0",
+      "orderNumber": "X5-91",
+      "title": "X5-91 • 15-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 15-partiya, Vazn: 904.2 kg",
+      "models": [
+        {
+          "name": "X5-91 • 15-partiya",
+          "qty": 904
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 904,
+      "stages": [
+        {
+          "id": "st_raskladka_1791108625567_0",
+          "name": "📐 Kesimxona Raskladkasi: X5-91 • 15-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_oqilbek",
+          "assignedName": "Oqilbek",
+          "assignedAvatar": "📐",
+          "estimatedHours": 5,
+          "effectiveHours": 5,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T10:10:25.567Z",
+          "endTime": "2026-10-04T15:10:25.567Z",
+          "status": "accepted",
+          "priority": "urgent",
+          "notes": "Partiya: 15-partiya, Vazn: 904.2 kg (Katta avtomat kesimxona uchun raskladka)",
+          "acceptedAt": "2026-10-04T10:11:08.906Z"
+        }
+      ],
+      "calculatedETA": "2026-10-04T15:10:25.567Z",
+      "calculatedETAFormatted": "4-Okt, 20:10",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📐 Oqilbek qo‘lida (~5s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T10:10:25.576Z",
+      "status": "in_progress"
+    },
     {
       "title": "Kuzgi Trench-palto Milano",
       "orderNumber": "ZAK-105",
@@ -389,17 +430,47 @@
         "id": "-1003004877945",
         "title": "Konstruktorlar",
         "type": "supergroup",
-        "lastActive": 1791026374420
+        "lastActive": 1791108668906
       },
       {
         "id": "-1004371833004",
         "title": "Modelxona",
         "type": "supergroup",
-        "lastActive": 1791022663848
+        "lastActive": 1791104121254
       }
     ]
   },
-  "updatedAt": 1791026374420,
+  "updatedAt": 1791110480138,
+  "cuttingRules": [
+    {
+      "id": "rule_dc",
+      "prefix": "DC",
+      "workerId": "tm_qobiljon",
+      "workerName": "Qobiljon",
+      "notes": "Barcha DC seriyali zakazlar (masalan: DC 1209, DC 0809)"
+    },
+    {
+      "id": "rule_dm",
+      "prefix": "DM",
+      "workerId": "tm_qobiljon",
+      "workerName": "Qobiljon",
+      "notes": "Barcha DM seriyali zakazlar (masalan: DM 43, DM 44)"
+    },
+    {
+      "id": "rule_x",
+      "prefix": "X",
+      "workerId": "tm_oqilbek",
+      "workerName": "Oqilbek",
+      "notes": "Barcha X seriyali zakazlar (masalan: X5-96, X-91)"
+    },
+    {
+      "id": "rule_xalat",
+      "prefix": "XALAT",
+      "workerId": "tm_oqilbek",
+      "workerName": "Oqilbek",
+      "notes": "Maxroviy xalat va boshqa xalatlar"
+    }
+  ],
   "personalPlans": {
     "tm_dilnoza": {
       "tasks": [
@@ -426,6 +497,54 @@
           "category": "work",
           "priority": "medium",
           "date": "2026-10-03",
+          "completed": true
+        }
+      ],
+      "habits": [],
+      "habitLogs": []
+    },
+    "tm_oqilbek": {
+      "tasks": [
+        {
+          "id": "task_corp_st_raskladka_1791108625567_0",
+          "title": "📐 [X5-91] Raskladka: X5-91 • 15-partiya (904.2 kg)",
+          "orderId": "ord_1791108625567_0",
+          "orderNumber": "X5-91",
+          "stageId": "st_raskladka_1791108625567_0",
+          "time": "09:00",
+          "duration": 300,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 15-partiya, Vazn: 904.2 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "plan_tm_oqilbek_1",
+          "title": "Ertalabki ish joyi va andazalarni tayyorlash",
+          "time": "08:30",
+          "duration": 30,
+          "category": "work",
+          "priority": "medium",
+          "date": "2026-10-04",
+          "completed": true
+        }
+      ],
+      "habits": [],
+      "habitLogs": []
+    },
+    "tm_qobiljon": {
+      "tasks": [
+        {
+          "id": "plan_tm_qobiljon_1",
+          "title": "Ertalabki ish joyi va andazalarni tayyorlash",
+          "time": "08:30",
+          "duration": 30,
+          "category": "work",
+          "priority": "medium",
+          "date": "2026-10-04",
           "completed": true
         }
       ],

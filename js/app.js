@@ -426,7 +426,160 @@ const App = {
     // Fetch live group configuration from server
     await this.refreshTelegramGroups();
 
+    // Fetch live cutting rules
+    await this.loadCuttingRules();
+
     modal.classList.add('open');
+  },
+
+  async openCuttingRulesModal() {
+    await this.openSettingsModal();
+    setTimeout(() => {
+      const section = document.getElementById('cutting-rules-section');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  },
+
+  async loadCuttingRules() {
+    try {
+      const res = await fetch('/api/corporate/cutting-rules');
+      if (res.ok) {
+        const data = await res.json();
+        this._cuttingRules = data.rules || [];
+        this._cuttingWorkers = data.workers || [];
+        this.renderCuttingRules();
+      }
+    } catch (e) {
+      console.warn('Kesim qoidalarini yuklashda xatolik:', e);
+    }
+  },
+
+  renderCuttingRules() {
+    const container = document.getElementById('cutting-rules-container');
+    const workerSelect = document.getElementById('new-rule-worker');
+    if (!container) return;
+
+    // Populate worker select options
+    if (workerSelect && this._cuttingWorkers && this._cuttingWorkers.length > 0) {
+      const currentVal = workerSelect.value;
+      workerSelect.innerHTML = this._cuttingWorkers.map(w => 
+        `<option value="${w.id}">${w.avatar || '👤'} ${w.name} (${w.roleTitle || w.role || 'Shogird'})</option>`
+      ).join('');
+      if (currentVal && Array.from(workerSelect.options).some(o => o.value === currentVal)) {
+        workerSelect.value = currentVal;
+      }
+    }
+
+    const rules = this._cuttingRules || [];
+    if (rules.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 1rem;">
+          Hozircha maxsus qoidalar belgilanmagan. Quyidagi shakl orqali yangi qoida kiriting.
+        </div>
+      `;
+      return;
+    }
+
+    let html = `<div style="display: flex; flex-direction: column; gap: 0.6rem;">`;
+
+    rules.forEach((rule) => {
+      const worker = (this._cuttingWorkers || []).find(w => w.id === rule.workerId) || {
+        name: rule.workerName || rule.workerId,
+        avatar: '👤'
+      };
+
+      html += `
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.55rem 0.75rem; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
+            <span style="background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); font-weight: 800; font-size: 0.85rem; padding: 0.2rem 0.55rem; border-radius: 4px; font-family: monospace; letter-spacing: 0.5px;">
+              ${rule.prefix}
+            </span>
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 600; font-size: 0.85rem; color: #fff; display: flex; align-items: center; gap: 0.35rem;">
+                <span style="color: var(--text-muted);">➔</span>
+                <span>${worker.avatar}</span>
+                <span>${worker.name}</span>
+              </div>
+              ${rule.notes ? `<div style="font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${rule.notes}</div>` : ''}
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="App.deleteCuttingRule('${rule.id}')" title="Qoidani o‘chirish" style="padding: 0.3rem 0.55rem; font-size: 0.75rem; color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">
+            🗑️ O‘chirish
+          </button>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+  },
+
+  async addCuttingRule() {
+    const prefixInput = document.getElementById('new-rule-prefix');
+    const workerSelect = document.getElementById('new-rule-worker');
+    const notesInput = document.getElementById('new-rule-notes');
+
+    const prefix = (prefixInput?.value || '').trim().toUpperCase();
+    const workerId = workerSelect?.value;
+    const notes = (notesInput?.value || '').trim();
+
+    if (!prefix) {
+      alert('Iltimos, zakaz prefiksini (masalan: DC, DM, KP, X) kiriting!');
+      if (prefixInput) prefixInput.focus();
+      return;
+    }
+
+    if (!workerId) {
+      alert('Iltimos, biriktiriladigan shogirdni tanlang!');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/corporate/cutting-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', prefix, workerId, notes })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        this._cuttingRules = data.rules || [];
+        this.renderCuttingRules();
+        if (prefixInput) prefixInput.value = '';
+        if (notesInput) notesInput.value = '';
+        this.showToast(`✅ [${prefix}] seriyasi bo‘yicha qoida saqlandi!`);
+        if (window.NotificationManager && window.NotificationManager.sound) {
+          window.NotificationManager.sound.playTone('success');
+        }
+      } else {
+        alert(data.error || 'Qoidani saqlashda xatolik yuz berdi');
+      }
+    } catch (e) {
+      alert('Server bilan aloqada xatolik yuz berdi');
+    }
+  },
+
+  async deleteCuttingRule(ruleId) {
+    if (!confirm('Haqiqatan ham ushbu taqsimlash qoidasini o‘chirmoqchimisiz?')) return;
+
+    try {
+      const res = await fetch('/api/corporate/cutting-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id: ruleId })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        this._cuttingRules = data.rules || [];
+        this.renderCuttingRules();
+        this.showToast('🗑️ Qoida muvaffaqiyatli o‘chirildi');
+      } else {
+        alert(data.error || 'O‘chirishda xatolik');
+      }
+    } catch (e) {
+      alert('Server bilan aloqada xatolik');
+    }
   },
 
   closeSettingsModal() {
@@ -449,8 +602,10 @@ const App = {
 
   async refreshTelegramGroups() {
     const constInput = document.getElementById('set-tg-constructor-group');
+    const kesimInput = document.getElementById('set-tg-kesim-group');
     const modelInput = document.getElementById('set-tg-modelxona-group');
     const constBadge = document.getElementById('tg-status-constructor');
+    const kesimBadge = document.getElementById('tg-status-kesim');
     const modelBadge = document.getElementById('tg-status-modelxona');
     const botBadge = document.getElementById('tg-bot-status-badge');
 
@@ -460,6 +615,9 @@ const App = {
         const data = await res.json();
         if (data.constructorGroupId && constInput && !constInput.value) {
           constInput.value = data.constructorGroupId;
+        }
+        if (data.kesimGroupId && kesimInput && !kesimInput.value) {
+          kesimInput.value = data.kesimGroupId;
         }
         if (data.modelxonaGroupId && modelInput && !modelInput.value) {
           modelInput.value = data.modelxonaGroupId;
@@ -474,6 +632,18 @@ const App = {
             constBadge.textContent = '⚪ Ulanmagan';
             constBadge.style.background = 'rgba(255,255,255,0.08)';
             constBadge.style.color = 'var(--text-muted)';
+          }
+        }
+
+        if (kesimBadge) {
+          if (data.kesimGroupId) {
+            kesimBadge.textContent = `🟢 Ulangan: ${data.kesimGroupName || 'Kesim guruhi'}`;
+            kesimBadge.style.background = 'rgba(245,158,11,0.2)';
+            kesimBadge.style.color = '#fbbf24';
+          } else {
+            kesimBadge.textContent = '⚪ Ulanmagan';
+            kesimBadge.style.background = 'rgba(255,255,255,0.08)';
+            kesimBadge.style.color = 'var(--text-muted)';
           }
         }
 
@@ -506,11 +676,19 @@ const App = {
 
   async testGroupMessage(groupType) {
     const token = document.getElementById('set-tg-token')?.value.trim();
-    const customId = groupType === 'constructor' 
-      ? document.getElementById('set-tg-constructor-group')?.value.trim()
-      : document.getElementById('set-tg-modelxona-group')?.value.trim();
+    let customId = '';
+    let groupName = 'Guruh';
 
-    const groupName = groupType === 'constructor' ? 'Konstruktorlar guruhi' : 'Modelxona guruhi';
+    if (groupType === 'kesim') {
+      customId = document.getElementById('set-tg-kesim-group')?.value.trim();
+      groupName = 'Kesim (Kroy) guruhi';
+    } else if (groupType === 'constructor') {
+      customId = document.getElementById('set-tg-constructor-group')?.value.trim();
+      groupName = 'Konstruktorlar guruhi';
+    } else {
+      customId = document.getElementById('set-tg-modelxona-group')?.value.trim();
+      groupName = 'Modelxona guruhi';
+    }
 
     this.showToast(`⏳ ${groupName}ga interaktiv test vazifa yuborilmoqda...`);
 
@@ -551,6 +729,7 @@ const App = {
     settings.telegramToken = settings.telegramBotToken;
     
     const constGroupId = document.getElementById('set-tg-constructor-group')?.value.trim() || '';
+    const kesimGroupId = document.getElementById('set-tg-kesim-group')?.value.trim() || '';
     const modelGroupId = document.getElementById('set-tg-modelxona-group')?.value.trim() || '';
 
     const apiKeyInput = document.getElementById('set-api-key');
@@ -572,6 +751,7 @@ const App = {
         body: JSON.stringify({
           token: settings.telegramBotToken,
           constructorGroupId: constGroupId,
+          kesimGroupId: kesimGroupId,
           modelxonaGroupId: modelGroupId
         })
       });

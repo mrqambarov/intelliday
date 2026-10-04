@@ -23,9 +23,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="./css/index.css?v=3.3">
-  <link rel="stylesheet" href="./css/components.css?v=3.3">
-  <link rel="stylesheet" href="./css/responsive.css?v=3.3">
+  <link rel="stylesheet" href="./css/index.css?v=3.4">
+  <link rel="stylesheet" href="./css/components.css?v=3.4">
+  <link rel="stylesheet" href="./css/responsive.css?v=3.4">
 </head>
 <body>
 
@@ -84,8 +84,8 @@
             📅 <span>Yuklanmoqda...</span>
           </div>
 
-          <!-- User Profile & Auth Pill (Telegram Login / Quick Switch) -->
-          <div class="user-header-pill" id="user-header-pill" onclick="AuthManager.openLoginModal()" title="Profilni almashtirish / Tizimga kirish (Telegram yoki PIN)">
+          <!-- User Profile & Auth Pill (Account Settings / Quick Switch) -->
+          <div class="user-header-pill" id="user-header-pill" onclick="AuthManager.openAccountModal()" title="Mening Akkauntim va Sozlamalar (Profil, Telegram, Parol, Rasm)">
             <div class="avatar-with-dot">
               <span class="user-avatar" id="header-user-avatar">👑</span>
               <span class="user-status-dot status-free" id="header-user-status-dot"></span>
@@ -96,6 +96,10 @@
             </div>
             <span class="user-switch-arrow">▾</span>
           </div>
+
+          <button class="btn btn-secondary btn-text-hide" id="header-account-btn" onclick="AuthManager.openAccountModal()" title="Akkaunt va Shaxsiy Sozlamalar" style="padding: 0.5rem 0.85rem; font-size: 0.85rem;">
+            👤 <span class="btn-text-hide">Akkaunt</span>
+          </button>
 
           <!-- Real-Time Multi-Device Sync Badge -->
           <div class="sync-status-badge status-syncing" id="sync-status-badge" onclick="Storage.checkServerAndSync()" title="Real-vaqt sinxronizatsiya holati">
@@ -515,7 +519,7 @@
         </div>
 
         <!-- Corporate Subtabs -->
-        <div class="corp-subtabs">
+        <div class="corp-subtabs" style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
           <button type="button" class="corp-subtab-btn active" data-tab="orders">
             👗 Zakazlar & Namunalar
           </button>
@@ -527,6 +531,9 @@
           </button>
           <button type="button" class="corp-subtab-btn" data-tab="worker">
             👷‍♀️ Xodim Portali (Shogird/Chevar)
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="App.openCuttingRulesModal()" style="margin-left: auto; font-size: 0.8rem; padding: 0.4rem 0.8rem; border-color: rgba(245,158,11,0.5); color: #fbbf24; display: flex; align-items: center; gap: 0.35rem;" title="Kesimxona zakazlarini taqsimlash qoidalari sozlamasi">
+            <span>✂️</span> <span>Kesim Qoidalari (Sozlama)</span>
           </button>
         </div>
 
@@ -579,6 +586,11 @@
       <button class="nav-item-btn" data-tab="assistant" onclick="App.switchMobileTab('assistant')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span>Yordamchi</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="account" onclick="AuthManager.openAccountModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Akkaunt</span>
       </button>
     </nav>
 
@@ -709,6 +721,18 @@
         <button class="modal-close-btn" onclick="App.closeSettingsModal()">✕</button>
         <h2 style="margin-bottom: 1.25rem;">Sozlamalar & Yordamchi</h2>
 
+        <!-- Quick link to Account Profile -->
+        <div class="account-shortcut-banner" onclick="App.closeSettingsModal(); AuthManager.openAccountModal();" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.12)); border: 1px solid rgba(99,102,241,0.3); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; transition: transform 0.2s, border-color 0.2s;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.6rem;" id="settings-acc-avatar-preview">👑</span>
+            <div>
+              <div style="font-weight: 700; color: #fff; font-size: 0.95rem;" id="settings-acc-name-preview">Bosh Konstruktor</div>
+              <div style="font-size: 0.75rem; color: var(--accent-cyan);">👤 Akkaunt sozlamalari: Parol, Telegram, Rasm yuklash →</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">Ochish</button>
+        </div>
+
         <form onsubmit="App.saveSettingsForm(event)">
           
           <h4 style="margin-bottom: 0.75rem; color: var(--accent-cyan);">Bildirishnomalar & Ovoz</h4>
@@ -783,10 +807,27 @@
               </div>
             </div>
 
-            <!-- 2. Modelxona guruhi -->
+            <!-- 2. Kesim (Kroy) guruhi -->
+            <div class="tg-group-row" style="background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🏭 2. Katta Avtomat Kesimxona (Kroy sexi)</span>
+                <span id="tg-status-kesim" class="badge" style="background: rgba(245,158,11,0.2); color: #fbbf24; font-size: 0.72rem;">Tekshirilmoqda</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="text" id="set-tg-kesim-group" class="form-input" placeholder="Guruh ID (-100...)" style="font-size: 0.82rem; padding: 0.4rem 0.65rem;">
+                <button type="button" class="btn btn-secondary" onclick="App.testGroupMessage('kesim')" style="font-size: 0.78rem; white-space: nowrap; padding: 0.4rem 0.75rem;">
+                  🧪 Test vazifa tashlash
+                </button>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                Katta obyomli avtomat kesimxona uchun qoliplarni shogirdlar (Oqilbek va Qobiljon) raskladka qilib berishadi.
+              </div>
+            </div>
+
+            <!-- 3. Modelxona guruhi -->
             <div class="tg-group-row" style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-sm); padding: 0.75rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🪡 2. Modelxona Guruhi (Etalon namuna & Chevarlar)</span>
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🪡 3. Modelxona Guruhi (Namunalar: Nozima, Charos & Chevarlar)</span>
                 <span id="tg-status-modelxona" class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-size: 0.72rem;">Tekshirilmoqda</span>
               </div>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -796,18 +837,58 @@
                 </button>
               </div>
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                Namuna tikish, montaj va kiyib ko‘rish (OTK) topshiriqlari avtomatik shu guruhga tushadi.
+                Dona-dona namuna bichish (Nozima & Charos) va etalon tikish (Kamola Master, Adiba, Rayhona, Nigora) shu yerda.
               </div>
             </div>
           </div>
 
           <!-- Quick Setup Guide -->
           <div style="background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.25); border-radius: var(--radius-sm); padding: 0.85rem; font-size: 0.8rem; line-height: 1.55; margin-bottom: 1.25rem;">
-            <strong style="color: #fff;">💡 Guruhlarni ulash bo‘yicha 3 daqiqalik qo‘llanma:</strong><br>
-            1. Ochgan botingizni ikkala guruhga (Konstruktorlar va Modelxona) <b>Admin</b> qilib qo‘shing.<br>
-            2. Konstruktorlar guruhida <code>/set_konstruktor</code> deb yozing — bot guruhni avtomatik eslab qoladi.<br>
-            3. Modelxona guruhida <code>/set_modelxona</code> deb yozing — bot uni Modelxona guruhi sifatida saqlaydi.<br>
-            4. Shuningdek guruhda <code>/chatid</code> yozib, chiqqan ID raqamni yuqoridagi maydonlarga qo‘lda yozishingiz ham mumkin.
+            <strong style="color: #fff;">💡 Guruhlarni ulash va Botdan plan joylash bo‘yicha qo‘llanma:</strong><br>
+            1. Botingizni guruhlarga (Konstruktorlar, Avtomat Kesimxona va Modelxona) <b>Admin</b> qilib qo‘shing.<br>
+            2. Kesimxona guruhida <code>/set_kesim</code>, Konstruktorlarda <code>/set_konstruktor</code>, Modelxonada <code>/set_modelxona</code> deb yozing.<br>
+            3. <b>Kesimxonaga kunlik plan berish</b> uchun botga: <code>/kesim ZAK-108 Palto 500 dona</code> yoki <code>/plan</code> deb yozing — bot vazifani shogirdlar (Oqilbek va Qobiljon)ga bo‘lib beradi va ularning kun tartibiga <b>«🚨 Juda zarur (Raskladka)»</b> qilib kiritadi!
+          </div>
+
+          <!-- Kesimxona Zakazlarini Taqsimlash Qoidalari (Raskladka Sozlamalari) -->
+          <div class="settings-group-header" id="cutting-rules-section" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; color: #f59e0b; font-size: 1.05rem;">✂️ Kesimxona Zakazlarini Taqsimlash Qoidalari</h4>
+            <span class="badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3);">Avtomatlashtirilgan</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.5;">
+            Qaysi seriyali zakazlar (masalan: <b>DC</b>, <b>DM</b>, <b>X</b>, <b>KP</b>, <b>XALAT</b>) qaysi shogirdga (Oqilbek yoki Qobiljon) avtomatik biriktirilishini bu yerda o‘zingiz belgilang. Bot va sayt yangi plan tushganda shu qoidalarga qarab ishlarni «🚨 JUDA ZARUR» qilib taqsimlaydi.
+          </p>
+
+          <!-- Dynamic Rules List -->
+          <div id="cutting-rules-container" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1rem;">
+            <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem;">Qoidalar yuklanmoqda...</div>
+          </div>
+
+          <!-- Add New Rule Form Inline -->
+          <div style="background: rgba(245,158,11,0.05); border: 1px dashed rgba(245,158,11,0.3); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1.5rem;">
+            <div style="font-weight: 700; font-size: 0.84rem; color: #fbbf24; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
+              <span>➕ Yangi zakaz taqsimlash qoidasi qo‘shish:</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1.3fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Zakaz kodi / Prefiksi</label>
+                <input type="text" id="new-rule-prefix" class="form-input" placeholder="Masalan: KP yoki DC" style="font-weight: 700; text-transform: uppercase; font-size: 0.85rem; padding: 0.4rem 0.6rem;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Biriktiriladigan shogird</label>
+                <select id="new-rule-worker" class="form-select" style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
+                  <!-- Filled dynamically -->
+                </select>
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <button type="button" class="btn btn-primary" onclick="App.addCuttingRule()" style="font-size: 0.82rem; padding: 0.45rem 0.85rem; white-space: nowrap; background: #f59e0b; border-color: #f59e0b; color: #000; font-weight: 700;">
+                  + Qo‘shish
+                </button>
+              </div>
+            </div>
+            <div>
+              <input type="text" id="new-rule-notes" class="form-input" placeholder="Izoh (ixtiyoriy, masalan: Qobiljonning barcha DC seriyali zakazlari)" style="font-size: 0.78rem; padding: 0.35rem 0.6rem;">
+            </div>
           </div>
 
           <h4 style="margin-bottom: 0.75rem; color: var(--accent-purple);">Google Gemini AI (Ixtiyoriy)</h4>
@@ -835,6 +916,235 @@
             <button type="button" class="btn btn-secondary" onclick="App.closeSettingsModal()">Yopish</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal: User Account & Profile Settings -->
+    <div class="modal-backdrop" id="account-settings-modal">
+      <div class="modal-panel account-modal-panel" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <button class="modal-close-btn" onclick="AuthManager.closeAccountModal()">✕</button>
+        
+        <div class="account-modal-header">
+          <div class="account-modal-badge">
+            <span class="pulse-dot"></span>
+            <span>Shaxsiy Kabinet</span>
+          </div>
+          <h2 style="margin: 0.25rem 0 0.25rem 0; font-size: 1.35rem; color: #fff;">Akkaunt & Profil Sozlamalari</h2>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0 0 1rem 0;">
+            Shaxsiy ma’lumotlar, Telegram bot ulanishi, rasm yuklash va xavfsizlik
+          </p>
+        </div>
+
+        <!-- Avatar Management Card -->
+        <div class="account-avatar-card">
+          <div class="account-avatar-wrapper">
+            <div class="account-avatar-circle" id="acc-avatar-preview">
+              👑
+            </div>
+            <label class="account-avatar-upload-trigger" title="Yangi rasm yuklash">
+              📷
+              <input type="file" id="acc-avatar-file-input" accept="image/*" style="display: none;" onchange="AuthManager.handleAvatarFileUpload(event)">
+            </label>
+          </div>
+
+          <div class="account-avatar-info">
+            <h3 id="acc-preview-name" style="margin: 0 0 0.25rem 0; font-size: 1.05rem; color: #fff;">Bosh Konstruktor</h3>
+            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+              <span id="acc-role-badge" class="user-role-badge head_constructor">Boshliq</span>
+              <span id="acc-login-badge" class="badge" style="background: rgba(255,255,255,0.08); font-family: monospace;">@admin</span>
+            </div>
+            
+            <div class="account-avatar-actions">
+              <label class="btn btn-secondary btn-sm" style="cursor: pointer; font-size: 0.78rem; padding: 0.3rem 0.65rem;">
+                📷 Rasm yuklash
+                <input type="file" accept="image/*" style="display: none;" onchange="AuthManager.handleAvatarFileUpload(event)">
+              </label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.toggleEmojiPicker()" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">
+                😊 Emodzi
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.resetAvatarToDefault()" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;" title="Boshlang‘ich emodziga qaytarish">
+                🗑️ Qaytarish
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Emoji Picker Dropdown (Collapsible) -->
+        <div id="acc-emoji-picker-drawer" class="acc-emoji-picker-drawer" style="display: none;">
+          <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Tezkor emodzi tanlang:</div>
+          <div class="acc-emoji-grid">
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('👑')">👑</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('📐')">📐</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('📏')">📏</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('✂️')">✂️</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('🪡')">🪡</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('🧵')">🧵</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('👗')">👗</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('👔')">👔</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('👤')">👤</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('🌟')">🌟</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('⚡')">⚡</button>
+            <button type="button" class="acc-emoji-item" onclick="AuthManager.selectAvatarEmoji('🎯')">🎯</button>
+          </div>
+        </div>
+        <input type="hidden" id="acc-avatar-value" value="">
+
+        <!-- Account Settings Tabs -->
+        <div class="account-nav-tabs">
+          <button type="button" class="account-nav-tab active" data-tab="general" onclick="AuthManager.switchAccountTab('general')">
+            👤 Ma’lumotlar
+          </button>
+          <button type="button" class="account-nav-tab" data-tab="telegram" onclick="AuthManager.switchAccountTab('telegram')">
+            ✈️ Telegram
+          </button>
+          <button type="button" class="account-nav-tab" data-tab="security" onclick="AuthManager.switchAccountTab('security')">
+            🔒 Parol & Xavfsizlik
+          </button>
+          <button type="button" class="account-nav-tab" data-tab="preferences" onclick="AuthManager.switchAccountTab('preferences')">
+            ⚙️ Sozlamalar
+          </button>
+        </div>
+
+        <form id="account-settings-form" onsubmit="AuthManager.saveAccountSettings(event)">
+          <!-- TAB 1: General Info -->
+          <div class="account-tab-pane active" id="acc-pane-general">
+            <div class="form-group">
+              <label class="form-label" for="acc-name-input">Ism va Familiya</label>
+              <input type="text" id="acc-name-input" class="form-input" placeholder="Masalan: Azizbek Qambarov" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="acc-phone-input">Telefon Raqami</label>
+              <input type="text" id="acc-phone-input" class="form-input" placeholder="+998 90 123-45-67">
+              <span style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">
+                Ushbu telefon raqami orqali ham tizimga kirishingiz mumkin.
+              </span>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">Tizimdagi Rol</label>
+                <input type="text" id="acc-role-title-display" class="form-input" readonly disabled style="opacity: 0.8; cursor: not-allowed; background: rgba(255,255,255,0.03);">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tizim Logini</label>
+                <input type="text" id="acc-login-display" class="form-input" readonly disabled style="opacity: 0.8; cursor: not-allowed; background: rgba(255,255,255,0.03); font-family: monospace;">
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: Telegram Integration -->
+          <div class="account-tab-pane" id="acc-pane-telegram" style="display: none;">
+            <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <strong style="color: #fff; font-size: 0.9rem;">✈️ Telegram Bot Integratsiyasi</strong>
+                <span id="acc-tg-status-badge" class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-size: 0.72rem;">Ulangan</span>
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">
+                Telegram username kiritilsa, bot orqali <b>1-klikda parolsiz tizimga kirish</b>, shoshilinch topshiriqlar bildirishnomasi va kunlik plan avtomatik yetkaziladi.
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="acc-telegram-username">Telegram Nickname / Username</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="acc-telegram-username" class="form-input" placeholder="@mrqambarov yoki nickname" style="font-family: monospace;">
+              </div>
+              <span style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">
+                Telegram profilingizdagi @ bilan boshlanadigan foydalanuvchi nomingiz.
+              </span>
+            </div>
+
+            <div id="acc-tg-connect-helper" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.75rem; margin-top: 0.75rem; font-size: 0.78rem; line-height: 1.55;">
+              <strong style="color: #fff;">💡 Bot bilan to‘liq sinxronlash:</strong><br>
+              1. Telegramda botimizni oching va <code>/login</code> yoki <code>/start</code> deb yozing.<br>
+              2. Shunda bot sizning Chat ID raqamingizni avtomatik eslab qoladi.<br>
+              <div style="margin-top: 0.5rem;">
+                <a id="acc-tg-bot-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; text-decoration: none;">
+                  🤖 Telegram Botni Ochish
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: Password & Security -->
+          <div class="account-tab-pane" id="acc-pane-security" style="display: none;">
+            <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 1rem; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+              🔐 <strong>Parolni o‘zgartirish:</strong> Agar parolingizni yangilamoqchi bo‘lsangiz, joriy parolingizni va yangi parolni kiriting. O‘zgartirishni istamasangiz, bo‘sh qoldiring.
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="acc-current-password">Joriy Parol</label>
+              <div style="position: relative;">
+                <input type="password" id="acc-current-password" class="form-input" placeholder="Hozirgi parolingiz" autocomplete="current-password">
+                <button type="button" class="btn-icon" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.85rem;" onclick="AuthManager.togglePassField('acc-current-password')">👁️</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="acc-new-password">Yangi Parol</label>
+              <div style="position: relative;">
+                <input type="password" id="acc-new-password" class="form-input" placeholder="Kamida 4 ta belgi" autocomplete="new-password">
+                <button type="button" class="btn-icon" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.85rem;" onclick="AuthManager.togglePassField('acc-new-password')">👁️</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="acc-confirm-password">Yangi Parolni Tasdiqlang</label>
+              <div style="position: relative;">
+                <input type="password" id="acc-confirm-password" class="form-input" placeholder="Yangi parolni takrorlang" autocomplete="new-password">
+                <button type="button" class="btn-icon" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.85rem;" onclick="AuthManager.togglePassField('acc-confirm-password')">👁️</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: Preferences & Session -->
+          <div class="account-tab-pane" id="acc-pane-preferences" style="display: none;">
+            <div class="settings-group-box" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1rem;">
+              <strong style="color: #fff; font-size: 0.85rem; display: block; margin-bottom: 0.65rem;">🔔 Bildirishnoma & Tovushlar</strong>
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; cursor: pointer; margin-bottom: 0.65rem;">
+                <span>Eslatmalar uchun audio signal (Web Audio)</span>
+                <input type="checkbox" id="acc-sound-toggle" onchange="AuthManager.syncPref('sound', this.checked)" style="width: 18px; height: 18px; accent-color: var(--accent-cyan);">
+              </label>
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; cursor: pointer;">
+                <span>Brauzer push-bildirishnomalari</span>
+                <input type="checkbox" id="acc-notif-toggle" onchange="AuthManager.syncPref('notif', this.checked)" style="width: 18px; height: 18px; accent-color: var(--accent-cyan);">
+              </label>
+            </div>
+
+            <div class="settings-group-box" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1rem;">
+              <strong style="color: #fff; font-size: 0.85rem; display: block; margin-bottom: 0.65rem;">🎨 Ilova Ko‘rinishi (Mavzu)</strong>
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="App.toggleTheme();" style="flex: 1; font-size: 0.82rem;">
+                  🌓 Mavzuni almashtirish (Tun / Kun)
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-group-box" style="background: rgba(244, 63, 94, 0.05); border: 1px solid rgba(244, 63, 94, 0.2); border-radius: var(--radius-md); padding: 0.85rem;">
+              <strong style="color: #f43f5e; font-size: 0.85rem; display: block; margin-bottom: 0.65rem;">🚪 Sessiya Boshqaruvi</strong>
+              <div style="display: flex; gap: 0.65rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.closeAccountModal(); AuthManager.openLoginModal();" style="flex: 1; font-size: 0.8rem;">
+                  🔄 Profilni almashtirish
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="AuthManager.closeAccountModal(); AuthManager.logout();" style="flex: 1; font-size: 0.8rem; color: #f43f5e; border-color: rgba(244,63,94,0.3);">
+                  🚪 Tizimdan chiqish
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
+            <button type="submit" class="btn btn-primary" id="acc-save-btn" style="flex: 1; font-size: 0.9rem; padding: 0.65rem 1rem;">
+              💾 Saqlash
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="AuthManager.closeAccountModal()" style="font-size: 0.9rem; padding: 0.65rem 1rem;">
+              Yopish
+            </button>
+          </div>
+        </form>
+
       </div>
     </div>
 
@@ -1049,16 +1359,16 @@
   </div>
 
   <!-- Scripts -->
-  <script src="./js/storage.js?v=3.2"></script>
-  <script src="./js/notifications.js?v=3.2"></script>
-  <script src="./js/assistant.js?v=3.2"></script>
-  <script src="./js/schedule.js?v=3.2"></script>
-  <script src="./js/pomodoro.js?v=3.2"></script>
-  <script src="./js/habits.js?v=3.2"></script>
-  <script src="./js/views.js?v=3.2"></script>
-  <script src="./js/auth.js?v=3.2"></script>
-  <script src="./js/corporate.js?v=3.2"></script>
-  <script src="./js/app.js?v=3.2"></script>
+  <script src="./js/storage.js?v=3.5"></script>
+  <script src="./js/notifications.js?v=3.5"></script>
+  <script src="./js/assistant.js?v=3.5"></script>
+  <script src="./js/schedule.js?v=3.5"></script>
+  <script src="./js/pomodoro.js?v=3.5"></script>
+  <script src="./js/habits.js?v=3.5"></script>
+  <script src="./js/views.js?v=3.5"></script>
+  <script src="./js/auth.js?v=3.5"></script>
+  <script src="./js/corporate.js?v=3.5"></script>
+  <script src="./js/app.js?v=3.5"></script>
 
 </body>
 </html>

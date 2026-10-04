@@ -104,8 +104,9 @@ const Schedule = {
   },
 
   createTaskCard(task) {
+    const isUrgent = task.priority === 'urgent' || task.isUrgent;
     const card = document.createElement('div');
-    card.className = `task-card priority-${task.priority} ${task.completed ? 'completed' : ''}`;
+    card.className = `task-card priority-${task.priority} ${task.completed ? 'completed' : ''} ${isUrgent ? 'urgent-glow' : ''}`;
     card.id = `card-${task.id}`;
 
     const mainCol = document.createElement('div');
@@ -133,11 +134,19 @@ const Schedule = {
     metaRow.innerHTML = `
       <span>⏰ ${task.time} (${task.duration} daqiqa)</span>
       <span class="badge badge-${task.category}">${this.getCategoryLabel(task.category)}</span>
+      ${isUrgent ? '<span class="badge badge-urgent">🚨 JUDA ZARUR</span>' : (task.priority === 'high' ? '<span class="badge" style="background:rgba(244,63,94,0.18);color:#f43f5e;font-weight:600;padding:2px 8px;border-radius:6px;font-size:0.75rem;">⚡ Shoshilinch</span>' : '')}
       ${task.recurring !== 'none' ? '<span>🔄 Har kuni</span>' : ''}
     `;
 
     details.appendChild(title);
     details.appendChild(metaRow);
+    if (isUrgent && task.notes) {
+      const noteEl = document.createElement('div');
+      noteEl.className = 'task-notes-preview';
+      noteEl.style.cssText = 'font-size: 0.78rem; color: #fca5a5; margin-top: 0.25rem; font-style: italic;';
+      noteEl.textContent = `📌 ${task.notes}`;
+      details.appendChild(noteEl);
+    }
     mainCol.appendChild(checkbox);
     mainCol.appendChild(details);
 

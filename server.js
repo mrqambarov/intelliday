@@ -86,6 +86,8 @@ let corporateDb = {
     delayBufferPercent: 15, // +15% safety buffer for technical corrections
     constructorGroupId: '',
     constructorGroupName: 'Konstruktorlar guruhi',
+    kesimGroupId: '',
+    kesimGroupName: 'Kesim (Kroy) guruhi',
     modelxonaGroupId: '',
     modelxonaGroupName: 'Modelxona guruhi',
     telegramBotToken: '',
@@ -103,6 +105,17 @@ if (fs.existsSync(CORPORATE_FILE)) {
   }
 } else {
   fs.writeFileSync(CORPORATE_FILE, JSON.stringify(corporateDb, null, 2), 'utf8');
+}
+
+const defaultCuttingRules = [
+  { id: 'rule_dc', prefix: 'DC', workerId: 'tm_qobiljon', workerName: 'Qobiljon', notes: 'Barcha DC seriyali zakazlar (masalan: DC 1209, DC 0809)' },
+  { id: 'rule_dm', prefix: 'DM', workerId: 'tm_qobiljon', workerName: 'Qobiljon', notes: 'Barcha DM seriyali zakazlar (masalan: DM 43, DM 44)' },
+  { id: 'rule_x', prefix: 'X', workerId: 'tm_oqilbek', workerName: 'Oqilbek', notes: 'Barcha X seriyali zakazlar (masalan: X5-96, X-91)' },
+  { id: 'rule_xalat', prefix: 'XALAT', workerId: 'tm_oqilbek', workerName: 'Oqilbek', notes: 'Maxroviy xalat va boshqa xalatlar' }
+];
+
+if (!Array.isArray(corporateDb.cuttingRules) || corporateDb.cuttingRules.length === 0) {
+  corporateDb.cuttingRules = defaultCuttingRules;
 }
 
 function saveCorporateDB() {
@@ -527,20 +540,29 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overr
   const token = (overrides.token || corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
   if (!token) return { ok: false, error: 'Telegram Bot Token belgilanmagan' };
 
-  const isConstructorStage = (
-    stage.role === 'assistant_constructor' ||
+  const isCutterStage = (
     stage.role === 'cutter' ||
-    stage.stageKey === 'pattern' ||
     stage.stageKey === 'cutting' ||
-    /andaza|bich|lekalo|gradatsiya|konstruk/i.test(stage.name || '')
+    /kesim|kroy|bich/i.test(stage.name || '')
   );
 
-  let targetGroupId = isConstructorStage 
-    ? corporateDb.settings.constructorGroupId 
-    : corporateDb.settings.modelxonaGroupId;
-  let targetGroupName = isConstructorStage 
-    ? (corporateDb.settings.constructorGroupName || 'Konstruktorlar guruhi')
-    : (corporateDb.settings.modelxonaGroupName || 'Modelxona guruhi');
+  const isConstructorStage = (
+    stage.role === 'assistant_constructor' ||
+    stage.stageKey === 'pattern' ||
+    /andaza|lekalo|gradatsiya|konstruk/i.test(stage.name || '')
+  );
+
+  let targetGroupId, targetGroupName;
+  if (isCutterStage && corporateDb.settings.kesimGroupId) {
+    targetGroupId = corporateDb.settings.kesimGroupId;
+    targetGroupName = corporateDb.settings.kesimGroupName || 'Kesim (Kroy) guruhi';
+  } else if (isConstructorStage || isCutterStage) {
+    targetGroupId = corporateDb.settings.constructorGroupId;
+    targetGroupName = corporateDb.settings.constructorGroupName || 'Konstruktorlar guruhi';
+  } else {
+    targetGroupId = corporateDb.settings.modelxonaGroupId;
+    targetGroupName = corporateDb.settings.modelxonaGroupName || 'Modelxona guruhi';
+  }
 
   if (overrides.groupId) {
     targetGroupId = String(overrides.groupId).trim();
@@ -548,11 +570,11 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overr
 
   // Fallback to any active group if specific one is not configured
   if (!targetGroupId) {
-    targetGroupId = corporateDb.settings.constructorGroupId || corporateDb.settings.modelxonaGroupId || db.settings.telegramChatId;
+    targetGroupId = corporateDb.settings.kesimGroupId || corporateDb.settings.constructorGroupId || corporateDb.settings.modelxonaGroupId || db.settings.telegramChatId;
   }
 
   if (!targetGroupId) {
-    console.log('[TELEGRAM] ⚠️ Guruh ID topilmadi (Konstruktor yoki Modelxona guruhi ulanmagan)');
+    console.log('[TELEGRAM] ⚠️ Guruh ID topilmadi (Konstruktor, Kesim yoki Modelxona guruhi ulanmagan)');
     return { ok: false, error: 'Guruh ID topilmadi' };
   }
 
@@ -562,7 +584,7 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overr
   const startTimeFormatted = formatDateTimeUz(stage.startTime || new Date());
   const endTimeFormatted = formatDateTimeUz(stage.endTime);
 
-  const headerIcon = isConstructorStage ? '📐 ✂️' : '🪡 👗';
+  const headerIcon = isCutterStage ? '✂️ 📐' : isConstructorStage ? '📐 📏' : '🪡 👗';
   let titleBadge = '';
   if (reason === 'next') {
     titleBadge = `🧵 <b>DIQQAT! NAVBATDAGI BOSQICH SIZNING GURUHINGIZDA:</b>`;
@@ -679,6 +701,433 @@ async function startTelegramBotPoller() {
   poll();
 }
 
+/**
+ * Robust parser for Kesim (Kroy) daily plans sent via Telegram or API.
+ * Supports:
+ * - Single order specification blocks (e.g. photo caption: "X5-96 \n 17-partiya \n 786.2 kg")
+ * - DC series orders (e.g. "DC 1209", "DC-0809", "DC0809") -> Qobiljon
+ * - DM series orders (e.g. "DM 43", "DM 44", "DM-44") -> Qobiljon
+ * - X series orders (e.g. "X5-96", "X-96") -> Oqilbek
+ * - Maxroviy xalat / Xalat orders
+ * - Multi-order lists: numbered (1. ... 2. ...) or line by line
+ * - "teng bo'l" / "2 kishiga bo'l" to split a single large batch 50/50
+ */
+function parseKesimPlanText(rawText) {
+  if (!rawText) return [];
+
+  // Remove command prefixes if any
+  let clean = rawText
+    .replace(/^\/(kesim|kroy|plan|reja)(@\w+)?/i, '')
+    .replace(/^(kesim|kroy|kunlik plan|plan|reja)\s*:\s*/i, '')
+    .trim();
+
+  if (!clean) return [];
+
+  const shouldSplitSingle = /bo['’`]?lib ber|teng bo['’`]?l|2 kishiga|ikkalasiga/i.test(clean);
+  clean = clean.replace(/bo['’`]?lib ber|teng bo['’`]?l|2 kishiga|ikkalasiga/gi, '').trim();
+
+  // Determine whether this text contains multiple distinct orders or a single multi-line order block
+  let blocks = [];
+  const hasNumberedList = /(?:^|\n)\s*\d+[.)]\s+/m.test(clean);
+  const hasDoubleNewline = /\n\s*\n/.test(clean);
+
+  if (hasNumberedList) {
+    blocks = clean.split(/(?:^|\n)\s*(?=\d+[.)]\s+)/).map(b => b.trim()).filter(Boolean);
+  } else if (hasDoubleNewline) {
+    blocks = clean.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+  } else {
+    // Check lines for distinct order codes (DC, DM, X..., ZAK..., Xalat)
+    const lines = clean.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const orderHeaderRegex = /\b(DC[-\s]?\d+|DM[-\s]?\d+|X\d*[-\s]?\d+|ZAK[-\s]?\d+|ORD[-\s]?\d+|maxroviy\s*xalat|xalat)\b/i;
+    const linesWithHeader = lines.filter(l => orderHeaderRegex.test(l));
+
+    if (linesWithHeader.length > 1) {
+      // Multiple orders: group lines starting at each order header
+      let curBlock = [];
+      for (const line of lines) {
+        if (orderHeaderRegex.test(line) && curBlock.length > 0) {
+          blocks.push(curBlock.join('\n'));
+          curBlock = [line];
+        } else {
+          curBlock.push(line);
+        }
+      }
+      if (curBlock.length > 0) blocks.push(curBlock.join('\n'));
+    } else {
+      // Single order block (e.g. "X5-96\n17-partiya\n786.2 kg")
+      blocks = [clean];
+    }
+  }
+
+  const items = [];
+
+  for (const block of blocks) {
+    let cleanBlock = block.replace(/^[\d]+[.)\s-]+/, '').trim();
+    if (!cleanBlock) continue;
+
+    // 1. Extract Order Number & Determine assigned worker rule
+    let orderNum = '';
+    let forceWorkerId = null;
+
+    // DC series -> Always Qobiljon (Dc 1209, DC-0809, DC1209, etc.)
+    const dcMatch = cleanBlock.match(/\b(DC[-\s]?\d+[A-Z0-9]*)\b/i);
+    // DM series -> Always Qobiljon (DM 43, DM-44, DM43, etc.)
+    const dmMatch = cleanBlock.match(/\b(DM[-\s]?\d+[A-Z0-9]*)\b/i);
+    // X series -> Oqilbek (X5-96, X-96, etc.)
+    const xMatch = cleanBlock.match(/\b(X\d*[-\s]?\d+[A-Z0-9]*)\b/i);
+    // Standard ZAK / ORD / AUDIT / KESIM
+    const zakMatch = cleanBlock.match(/\b(ZAK[-\s]?\d+|ORD[-\s]?\d+|AUDIT[-\s]?\d+|KESIM[-\s]?\d+)\b/i);
+
+    if (dcMatch) {
+      orderNum = dcMatch[1].replace(/\s+/, '-').toUpperCase();
+      forceWorkerId = 'tm_qobiljon';
+    } else if (dmMatch) {
+      orderNum = dmMatch[1].replace(/\s+/, '-').toUpperCase();
+      forceWorkerId = 'tm_qobiljon';
+    } else if (xMatch) {
+      orderNum = xMatch[1].replace(/\s+/, '-').toUpperCase();
+      forceWorkerId = 'tm_oqilbek';
+    } else if (zakMatch) {
+      orderNum = zakMatch[1].replace(/\s+/, '-').toUpperCase();
+    }
+
+    // 2. Extract Partiya (e.g. 17-partiya, partiya 17)
+    let partiya = '';
+    const partiyaMatch = cleanBlock.match(/\b(\d+[-_\s]?partiya|partiya[-_\s]?\d+)\b/i);
+    if (partiyaMatch) {
+      partiya = partiyaMatch[1].replace(/\s+/, '-');
+    }
+
+    // 3. Extract Weight (kg)
+    let weight = '';
+    const weightMatch = cleanBlock.match(/\b(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilogramm)\b/i);
+    if (weightMatch) {
+      weight = `${weightMatch[1]} kg`;
+    }
+
+    // 4. Extract Quantity (dona / sht / pcs)
+    let qty = 0;
+    const qtyMatch = cleanBlock.match(/\b(\d+)\s*(?:dona|ta|sht|pcs|piece|juft)\b/i);
+    if (qtyMatch) {
+      qty = parseInt(qtyMatch[1], 10);
+    } else if (weightMatch) {
+      qty = Math.round(parseFloat(weightMatch[1].replace(',', '.')));
+    }
+
+    // 5. Detect special product names (Maxroviy xalat, Palto, etc.)
+    let productTitle = '';
+    if (/maxroviy\s*xalat/i.test(cleanBlock)) {
+      productTitle = 'Maxroviy xalat';
+    } else if (/xalat/i.test(cleanBlock)) {
+      productTitle = 'Xalat';
+    } else if (/palto/i.test(cleanBlock)) {
+      productTitle = 'Palto';
+    } else if (/trench|trensh/i.test(cleanBlock)) {
+      productTitle = 'Trench';
+    } else if (/nimcha/i.test(cleanBlock)) {
+      productTitle = 'Nimcha';
+    } else if (/shim/i.test(cleanBlock)) {
+      productTitle = 'Shim';
+    } else if (/pidjak/i.test(cleanBlock)) {
+      productTitle = 'Pidjak';
+    } else if (/ko['’`]?ylak/i.test(cleanBlock)) {
+      productTitle = 'Ko‘ylak';
+    }
+
+    // Build title and notes
+    let titleParts = [];
+    if (orderNum) titleParts.push(orderNum);
+    if (productTitle && !titleParts.includes(productTitle)) titleParts.push(productTitle);
+    if (partiya) titleParts.push(partiya);
+
+    let finalTitle = titleParts.join(' • ');
+    if (!finalTitle) {
+      finalTitle = cleanBlock.split('\n')[0].replace(/^[•\-\*]\s*/, '').trim() || 'Avtomat Kesim Raskladkasi';
+    }
+
+    let notesList = [];
+    if (partiya) notesList.push(`Partiya: ${partiya}`);
+    if (weight) notesList.push(`Vazn: ${weight}`);
+    if (qty && !weight) notesList.push(`Miqdor: ${qty} dona`);
+    if (/maxroviy/i.test(cleanBlock)) notesList.push(`Mato: Maxroviy`);
+
+    let notes = notesList.join(', ');
+    if (!notes) {
+      notes = cleanBlock.replace(/\r?\n/g, ' ').substring(0, 100);
+    }
+
+    // If orderNum was not found, auto-generate standard code
+    if (!orderNum) {
+      if (productTitle === 'Maxroviy xalat' || productTitle === 'Xalat') {
+        const pNum = partiya ? partiya.replace(/\D/g, '') : '';
+        orderNum = pNum ? `XALAT-${pNum}` : '';
+      }
+    }
+
+    items.push({
+      orderNumber: orderNum,
+      title: finalTitle,
+      productTitle,
+      partiya,
+      weight,
+      qty,
+      notes,
+      rawBlock: cleanBlock,
+      forceWorkerId
+    });
+  }
+
+  // If user requested splitting a single batch between 2 workers
+  if (shouldSplitSingle && items.length === 1 && items[0].qty > 1) {
+    const orig = items[0];
+    const half1 = Math.ceil(orig.qty / 2);
+    const half2 = Math.floor(orig.qty / 2);
+    return [
+      { ...orig, title: orig.title + ' (1-partiya)', qty: half1, forceWorkerId: 'tm_oqilbek' },
+      { ...orig, title: orig.title + ' (2-partiya)', qty: half2, forceWorkerId: 'tm_qobiljon' }
+    ];
+  }
+
+  return items;
+}
+
+/**
+ * Distributes large-scale automatic Kesimxona (Kroy) daily plan fairly between
+ * the two apprentice constructors (Oqilbek & Qobiljon) for mould / marker layout (raskladka).
+ *
+ * Specific Factory Assignment Rules:
+ * - DC series (DC 1209, DC 0809, etc.) -> ALWAYS Qobiljon (tm_qobiljon)
+ * - DM series (DM 43, DM 44, etc.)     -> ALWAYS Qobiljon (tm_qobiljon)
+ * - X series (X5-96, X-96, etc.)       -> ALWAYS Oqilbek (tm_oqilbek)
+ * - Other orders & Maxroviy xalat      -> Balanced based on load or designated helper
+ * - All tasks assigned with priority: 'urgent' (🚨 JUDA ZARUR)!
+ */
+function distributeKesimPlan(items, senderInfo = {}) {
+  let shogirdlar = corporateDb.teamMembers.filter(t => t.role === 'assistant_constructor' && t.active !== false);
+  if (shogirdlar.length === 0) {
+    shogirdlar = corporateDb.teamMembers.filter(t => t.id === 'tm_oqilbek' || t.id === 'tm_qobiljon');
+  }
+
+  let oqilbek = shogirdlar.find(c => c.id === 'tm_oqilbek') || shogirdlar[0];
+  let qobiljon = shogirdlar.find(c => c.id === 'tm_qobiljon') || shogirdlar[1] || shogirdlar[0];
+
+  if (!oqilbek || !qobiljon) {
+    return { ok: false, error: 'Yordamchi konstruktorlar (Oqilbek va Qobiljon) tizimda topilmadi' };
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  corporateDb.personalPlans = corporateDb.personalPlans || {};
+
+  function getWorkerLoad(workerId) {
+    const plan = getUserPersonalPlan(workerId);
+    const uncompletedTasks = (plan.tasks || []).filter(t => !t.completed && (t.date === todayStr || !t.date));
+    const hours = uncompletedTasks.reduce((acc, t) => acc + ((t.duration || 120) / 60), 0);
+    const isBusy = (corporateDb.teamMembers.find(t => t.id === workerId)?.currentStatus === 'busy') ? 1 : 0;
+    return {
+      count: uncompletedTasks.length,
+      hours,
+      isBusy,
+      score: uncompletedTasks.length * 2 + hours + (isBusy * 3)
+    };
+  }
+
+  const assignedResults = [];
+  const token = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+
+  items.forEach((item, index) => {
+    let targetWorker = null;
+    let matchedRule = null;
+
+    // Rule 1: Explicit forceWorkerId from parser
+    if (item.forceWorkerId === 'tm_qobiljon') targetWorker = qobiljon;
+    else if (item.forceWorkerId === 'tm_oqilbek') targetWorker = oqilbek;
+
+    const ordUpper = (item.orderNumber || '').toUpperCase().trim();
+    const titleUpper = (item.title || '').toUpperCase().trim();
+    const rawUpper = (item.rawBlock || '').toUpperCase().trim();
+
+    // Rule 2: User-configured dynamic cutting rules (corporateDb.cuttingRules)
+    if (!targetWorker && Array.isArray(corporateDb.cuttingRules)) {
+      for (const rule of corporateDb.cuttingRules) {
+        if (!rule || !rule.prefix) continue;
+        const p = String(rule.prefix).trim().toUpperCase();
+        if (!p) continue;
+
+        const pEsc = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const startRegex = new RegExp(`^${pEsc}(?:[-_\\s\\d]|$)`, 'i');
+        const wordRegex = new RegExp(`(?:^|[^A-Z0-9])${pEsc}(?:[-_\\s\\d]|$)`, 'i');
+
+        const matched = 
+          startRegex.test(ordUpper) ||
+          wordRegex.test(ordUpper) ||
+          wordRegex.test(titleUpper) ||
+          wordRegex.test(rawUpper);
+
+        if (matched) {
+          const w = corporateDb.teamMembers.find(t => t.id === rule.workerId);
+          if (w) {
+            targetWorker = w;
+            matchedRule = rule;
+            break;
+          }
+        }
+      }
+    }
+
+    // Rule 3: Built-in fallback if no configured rule matched
+    if (!targetWorker) {
+      if (/^DC\b|^DC[-_\s\d]/i.test(ordUpper) || /\bDC[-\s]?\d+/i.test(titleUpper) || /\bDC[-\s]?\d+/i.test(rawUpper)) {
+        targetWorker = qobiljon;
+      } else if (/^DM\b|^DM[-_\s\d]/i.test(ordUpper) || /\bDM[-\s]?\d+/i.test(titleUpper) || /\bDM[-\s]?\d+/i.test(rawUpper)) {
+        targetWorker = qobiljon;
+      } else if (/^X\d*[-_\s\d]/i.test(ordUpper) || /\bX\d*[-\s]?\d+/i.test(titleUpper) || /\bX\d*[-\s]?\d+/i.test(rawUpper)) {
+        // X-series (e.g. X5-96) belongs to Oqilbek
+        targetWorker = oqilbek;
+      } else {
+        // Balance other orders between Oqilbek and Qobiljon
+        const oqilbekLoad = getWorkerLoad(oqilbek.id);
+        const qobiljonLoad = getWorkerLoad(qobiljon.id);
+        targetWorker = oqilbekLoad.score <= qobiljonLoad.score ? oqilbek : qobiljon;
+      }
+    }
+
+    const qty = parseInt(item.qty, 10) || 0;
+    const estHours = item.estimatedHours || Math.max(1.5, Math.min(5, Math.round(((qty || 100) / 150) * 10) / 10 + 1));
+
+    let orderNum = item.orderNumber || '';
+    if (!orderNum) {
+      const existingNums = (corporateDb.orders || [])
+        .map(o => parseInt((o.orderNumber || '').replace(/\D/g, ''), 10))
+        .filter(n => !isNaN(n));
+      const nextNum = existingNums.length ? Math.max(...existingNums) + 1 : 106;
+      orderNum = `ZAK-${nextNum}`;
+    }
+
+    const modelTitle = item.productTitle ? `${item.productTitle}${item.partiya ? ' (' + item.partiya + ')' : ''}` : (item.title || 'Avtomat Kroy Raskladkasi');
+    const notes = item.notes || '';
+
+    const workerPlan = getUserPersonalPlan(targetWorker.id);
+    workerPlan.tasks = workerPlan.tasks || [];
+    const todayTasks = workerPlan.tasks.filter(t => t.date === todayStr);
+
+    let scheduledTime = '09:00';
+    if (todayTasks.length > 0) {
+      const times = todayTasks.map(t => {
+        const [h, m] = (t.time || '09:00').split(':').map(Number);
+        return (h * 60) + (m || 0) + (t.duration || 120);
+      });
+      const maxMins = Math.max(...times);
+      const nextH = Math.min(16, Math.floor(maxMins / 60));
+      const nextM = (maxMins % 60) < 30 ? '00' : '30';
+      scheduledTime = `${String(nextH).padStart(2, '0')}:${nextM}`;
+    }
+
+    const stageId = `st_raskladka_${Date.now()}_${index}`;
+    const stageStartTime = new Date();
+    const stageEndTime = new Date(Date.now() + estHours * 3600000);
+
+    const newStage = {
+      id: stageId,
+      name: `📐 Kesimxona Raskladkasi: ${modelTitle}`,
+      stageKey: 'raskladka',
+      role: 'assistant_constructor',
+      assignedTo: targetWorker.id,
+      assignedName: targetWorker.name,
+      assignedAvatar: targetWorker.avatar,
+      estimatedHours: estHours,
+      effectiveHours: estHours,
+      unitHours: qty ? Math.round((estHours / qty) * 100) / 100 : estHours,
+      startTime: stageStartTime.toISOString(),
+      endTime: stageEndTime.toISOString(),
+      status: 'pending',
+      priority: 'urgent', // 🚨 JUDA ZARUR!
+      notes: notes ? `${notes} (Katta avtomat kesimxona uchun raskladka)` : `Avtomat kesimxona qolipi va raskladkasi (${senderInfo.name || 'Bosh Konstruktor'})`
+    };
+
+    let targetOrder = (corporateDb.orders || []).find(o =>
+      (o.orderNumber && o.orderNumber.toUpperCase() === orderNum.toUpperCase()) ||
+      (o.id === item.orderId)
+    );
+
+    if (targetOrder) {
+      targetOrder.stages = targetOrder.stages || [];
+      targetOrder.stages.push(newStage);
+      targetOrder.priority = 'urgent';
+      if (qty && (!targetOrder.totalPieces || targetOrder.totalPieces === 0)) {
+        targetOrder.totalPieces = (targetOrder.totalPieces || 0) + qty;
+      }
+    } else {
+      targetOrder = {
+        id: `ord_${Date.now()}_${index}`,
+        orderNumber: orderNum,
+        title: modelTitle,
+        clientOrDept: 'Katta Avtomat Kesimxona (Kroy sexi)',
+        priority: 'urgent', // 🚨 JUDA ZARUR!
+        notes: notes || `Avtomat kesimxona plani bot orqali kiritildi (${senderInfo.name || 'Bosh Konstruktor'})`,
+        models: [{ name: modelTitle, qty: qty || 1 }],
+        modelCount: 1,
+        totalPieces: qty || 1,
+        stages: [newStage],
+        calculatedETA: stageEndTime.toISOString(),
+        calculatedETAFormatted: formatDateTimeUz(stageEndTime),
+        explanation: `• <b>Kesimxona raskladkasi</b>: ${targetWorker.avatar} ${targetWorker.name} qo‘lida (~${estHours}s). 🚨 Juda zarur.`,
+        createdAt: new Date().toISOString(),
+        status: 'in_progress'
+      };
+      corporateDb.orders.unshift(targetOrder);
+    }
+
+    const taskPlanItem = {
+      id: `task_corp_${stageId}`,
+      title: `📐 [${orderNum}] Raskladka: ${modelTitle}${item.weight ? ' (' + item.weight + ')' : (qty ? ' (' + qty + ' dona)' : '')}`,
+      orderId: targetOrder.id,
+      orderNumber: orderNum,
+      stageId: stageId,
+      time: scheduledTime,
+      duration: Math.round(estHours * 60),
+      category: 'work',
+      priority: 'urgent', // 🚨 JUDA ZARUR!
+      isUrgent: true,
+      date: todayStr,
+      completed: false,
+      notes: `Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. ${notes || ''}. Biriktirdi: ${senderInfo.name || 'Bosh Konstruktor'}`,
+      isCorporateStage: true
+    };
+
+    workerPlan.tasks.unshift(taskPlanItem);
+
+    assignedResults.push({
+      worker: targetWorker,
+      order: targetOrder,
+      stage: newStage,
+      task: taskPlanItem,
+      qty,
+      estHours,
+      time: scheduledTime,
+      matchedRule: matchedRule ? { prefix: matchedRule.prefix, workerName: targetWorker.name } : null
+    });
+
+    // Notify assigned apprentice directly via Telegram if chat ID exists
+    if (token && targetWorker.telegramChatId) {
+      sendTelegramMessage(token, targetWorker.telegramChatId,
+        `🚨 <b>YANGI JUDA ZARUR VAZIFA!</b>\n\n` +
+        `Hurmatli <b>${escapeHtml(targetWorker.name)}</b>, sizga katta avtomat kesimxona uchun yangi shoshilinch raskladka biriktirildi:\n\n` +
+        `📦 <b>Buyurtma:</b> [${escapeHtml(orderNum)}] ${escapeHtml(modelTitle)}\n` +
+        `⚡ <b>Darajasi:</b> 🚨 <b>JUDA ZARUR (O‘TA SHOSHILINCH)</b>\n` +
+        `⏱ <b>Reja vaqti:</b> Soat ${scheduledTime} (~${estHours} soat)\n` +
+        (notes ? `📝 <i>${escapeHtml(notes)}</i>\n\n` : '\n') +
+        `<i>Iltimos, ilovada yoki botda vazifani qabul qiling!</i>`
+      ).catch(() => {});
+    }
+  });
+
+  saveCorporateDB();
+  broadcastSSE('corporate_sync', corporateDb);
+  broadcastSSE('sync', db);
+
+  return { ok: true, results: assignedResults };
+}
+
 async function handleTelegramUpdate(token, update) {
   // Track groups that interact with the bot
   const msgObj = update.message || (update.callback_query && update.callback_query.message);
@@ -700,7 +1149,16 @@ async function handleTelegramUpdate(token, update) {
 
     // Auto-detect group roles if not yet bound
     const lowerTitle = gTitle.toLowerCase();
-    if (!corporateDb.settings.constructorGroupId && (lowerTitle.includes('konstruktor') || lowerTitle.includes('andaza') || lowerTitle.includes('shogird') || lowerTitle.includes('chizma'))) {
+    if (!corporateDb.settings.kesimGroupId && (lowerTitle.includes('kesim') || lowerTitle.includes('kroy') || lowerTitle.includes('bichuv') || lowerTitle.includes('bichish'))) {
+      corporateDb.settings.kesimGroupId = gId;
+      corporateDb.settings.kesimGroupName = gTitle;
+      saveCorporateDB();
+      sendTelegramMessage(token, gId, 
+        `🤖 <b>IntelliDay — Kesim (Kroy) Guruhi muvaffaqiyatli tanildi!</b>\n\n` +
+        `Ushbu guruh <b>Kesim (Kroy) guruhi</b> sifatida tizimga ulandi (ID: <code>${gId}</code>).\n` +
+        `Nozima va Charos uchun barcha kunlik kesim rejalari va bichuv vazifalari shu yerga kelib tushadi!`
+      );
+    } else if (!corporateDb.settings.constructorGroupId && (lowerTitle.includes('konstruktor') || lowerTitle.includes('andaza') || lowerTitle.includes('shogird') || lowerTitle.includes('chizma'))) {
       corporateDb.settings.constructorGroupId = gId;
       corporateDb.settings.constructorGroupName = gTitle;
       saveCorporateDB();
@@ -947,9 +1405,9 @@ async function handleTelegramUpdate(token, update) {
     return;
   }
 
-  // 2. Handle Text Messages (Direct & Groups)
-  if (update.message && update.message.text) {
-    const rawText = update.message.text.trim();
+  // 2. Handle Text & Photo Messages (Direct & Groups)
+  if (update.message && (update.message.text || update.message.caption || update.message.photo)) {
+    const rawText = (update.message.caption || update.message.text || '').trim();
     // Support commands with bot username suffix: /command@mybot
     const text = rawText.split('@')[0].trim();
     const chatId = update.message.chat.id;
@@ -957,6 +1415,8 @@ async function handleTelegramUpdate(token, update) {
     const groupTitle = update.message.chat.title || '';
     const fromUser = update.message.from || {};
     const tgUsername = fromUser.username ? `@${fromUser.username.toLowerCase()}` : '';
+    const forwardOrigin = update.message.forward_sender_name || (update.message.forward_from ? `${update.message.forward_from.first_name || ''} ${update.message.forward_from.last_name || ''}`.trim() : '');
+    const hasPhoto = Array.isArray(update.message.photo) && update.message.photo.length > 0;
 
     if (!db.settings.telegramChatId && !isGroup) {
       db.settings.telegramChatId = String(chatId);
@@ -970,9 +1430,25 @@ async function handleTelegramUpdate(token, update) {
       reply += `📌 <b>Turi:</b> ${isGroup ? 'Guruh (' + escapeHtml(groupTitle) + ')' : 'Shaxsiy chat'}\n\n`;
       if (isGroup) {
         reply += `Ushbu guruhni tizimga ulash uchun quyidagi buyruqlardan birini bosing:\n`;
+        reply += `✂️ <b>/set_kesim</b> — Kesim (Kroy) guruhi deb belgilash\n`;
         reply += `📐 <b>/set_konstruktor</b> — Konstruktorlar guruhi deb belgilash\n`;
         reply += `🪡 <b>/set_modelxona</b> — Modelxona guruhi deb belgilash`;
       }
+      await sendTelegramMessage(token, chatId, reply);
+      return;
+    }
+
+    // Command: /set_kesim or /set_kroy
+    if (text === '/set_kesim' || text === '/set_kroy') {
+      corporateDb.settings = corporateDb.settings || {};
+      corporateDb.settings.kesimGroupId = String(chatId);
+      corporateDb.settings.kesimGroupName = groupTitle || 'Kesim (Kroy) guruhi';
+      saveCorporateDB();
+      const reply = 
+        `✅ <b>Muvaffaqiyatli! Ushbu guruh KESIM (KROY) GURUHI sifatida belgilandi.</b>\n\n` +
+        `📌 Guruhi: <b>${escapeHtml(corporateDb.settings.kesimGroupName)}</b>\n` +
+        `🆔 ID: <code>${chatId}</code>\n\n` +
+        `Endi botga joylangan barcha kunlik kesim planlari Nozima va Charosga teng taqsimlanib, to‘g‘ridan-to‘g‘ri shu guruhga tashlab boriladi! ✂️`;
       await sendTelegramMessage(token, chatId, reply);
       return;
     }
@@ -1007,8 +1483,165 @@ async function handleTelegramUpdate(token, update) {
       return;
     }
 
+    // Auto-detect Kesim (Kroy) Plan:
+    // 1. Explicit command: /kesim, /kroy, /plan, /reja or "kesim:", "kroy:", "plan:"
+    // 2. OR Cutting Order Code in text: DC..., DM..., X5-96 (X...), ZAK-...
+    // 3. OR Keywords: "partiya" (e.g. 17-partiya), "kg" (e.g. 786.2 kg), "xalat", "maxroviy", "raskladka"
+    // 4. OR sent in the designated Kesim (Kroy) group
+    const isExplicitKesimCmd = 
+      /^\/(kesim|kroy|plan|reja)\b/i.test(text) ||
+      /^(kesim|kroy|kunlik plan|plan|reja)\s*:\s*/i.test(rawText);
+
+    const hasCuttingOrderPattern = 
+      /\b(DC[-\s]?\d+|DM[-\s]?\d+|X\d*[-\s]?\d+|ZAK[-\s]?\d+)\b/i.test(rawText) ||
+      (/\b\d+[-_\s]?partiya\b/i.test(rawText) && /\b\d+(?:[.,]\d+)?\s*(?:kg|kilo|dona|ta)\b/i.test(rawText)) ||
+      /\b(maxroviy\s*xalat|xalat)\b/i.test(rawText) ||
+      /\braskladka\b/i.test(rawText);
+
+    const isKesimGroup = corporateDb.settings?.kesimGroupId && String(corporateDb.settings.kesimGroupId) === String(chatId);
+
+    const isKesimTrigger = isExplicitKesimCmd || hasCuttingOrderPattern || (isKesimGroup && (rawText.length > 2 || hasPhoto));
+
+    if (isKesimTrigger) {
+      const cleanTg = (tgUsername || '').toLowerCase().replace(/^@/, '');
+      let senderMember = corporateDb.teamMembers.find(t => 
+        (cleanTg && t.telegramUsername && t.telegramUsername.toLowerCase().replace(/^@/, '') === cleanTg) ||
+        (t.telegramChatId && t.telegramChatId === String(chatId))
+      );
+
+      if (!senderMember && (String(chatId) === '6263659922' || cleanTg === 'mrqambarov')) {
+        senderMember = corporateDb.teamMembers.find(t => t.id === 'tm_boss');
+      }
+
+      let senderDisplayName = senderMember ? `${senderMember.avatar} ${senderMember.name}` : (fromUser.first_name || 'Bosh Konstruktor');
+      if (forwardOrigin) {
+        senderDisplayName += ` (${forwardOrigin} orqali)`;
+      }
+
+      const parsedItems = parseKesimPlanText(rawText);
+
+      // If user typed empty command (e.g. /kesim or /plan with no text)
+      if (!parsedItems || parsedItems.length === 0) {
+        const oqilbekPlan = getUserPersonalPlan('tm_oqilbek');
+        const qobiljonPlan = getUserPersonalPlan('tm_qobiljon');
+        const todayStr = new Date().toISOString().split('T')[0];
+        const oqilbekPending = (oqilbekPlan.tasks || []).filter(t => !t.completed && (t.date === todayStr || !t.date)).length;
+        const qobiljonPending = (qobiljonPlan.tasks || []).filter(t => !t.completed && (t.date === todayStr || !t.date)).length;
+
+        let guide = `✂️ <b>Katta Avtomat Kesimxona (Kroy) — Raskladka Rejalashtirish Boti</b>\n\n`;
+        guide += `👥 <b>Yordamchi Konstruktorlar (Shogirdlar) Bandligi:</b>\n`;
+        guide += `• 📐 <b>Oqilbek:</b> ${oqilbekPending === 0 ? '🟢 Bo‘sh' : `🔴 ${oqilbekPending} ta raskladka navbatda`}\n`;
+        guide += `• 📏 <b>Qobiljon:</b> ${qobiljonPending === 0 ? '🟢 Bo‘sh' : `🔴 ${qobiljonPending} ta raskladka navbatda`}\n\n`;
+        guide += `🏭 <b>Vazifasi:</b>\n`;
+        guide += `Katta avtomat kesimxona uchun qoliplar va mato raskladkalarini tayyorlash. Bot buyurtmalarni kiritilgan qoidalar bo‘yicha shogirdlarga bo‘lib beradi va ularning kun tartibiga <b>«🚨 JUDA ZARUR»</b> qilib kiritadi!\n\n`;
+
+        guide += `📌 <b>Hozirgi sozlamalar bo‘yicha qoidalar:</b>\n`;
+        const activeRules = corporateDb.cuttingRules || [];
+        if (activeRules.length > 0) {
+          activeRules.forEach(r => {
+            const w = corporateDb.teamMembers.find(t => t.id === r.workerId);
+            guide += `• 🏷️ <b>${escapeHtml(r.prefix)}</b> seriyasi ➔ ${w ? w.avatar : '👤'} <b>${escapeHtml(w ? w.name : r.workerName)}</b>\n`;
+          });
+        } else {
+          guide += `• <b>DC</b> va <b>DM</b> -> <b>Qobiljon</b>ga, <b>X</b> -> <b>Oqilbek</b>ga\n`;
+        }
+        guide += `• Boshqa buyurtmalar va Maxroviy xalat -> yuklamaga qarab teng taqsimlanadi.\n\n`;
+        guide += `⚙️ <i>Yangi qoida kiritish:</i> <code>/qoida &lt;prefiks&gt; &lt;xodim&gt;</code> (masalan: <code>/qoida KP Oqilbek</code>)\n`;
+        guide += `📋 <i>Barcha qoidalar ro‘yxati:</i> <code>/qoidalar</code>\n\n`;
+        guide += `📌 <b>Misol:</b> Rasm bilan birga yoki shunchaki yuborishingiz mumkin:\n`;
+        guide += `<code>X5-96\n17-partiya\n786.2 kg</code>\n\n`;
+        guide += `<i>(Hech qanday komandasiz to‘g‘ridan-to‘g‘ri forward qilib tashlasangiz ham bot avtomatik qabul qiladi)</i>`;
+
+        await sendTelegramMessage(token, chatId, guide);
+        return;
+      }
+
+      // Distribute tasks
+      const distResult = distributeKesimPlan(parsedItems, {
+        id: senderMember ? senderMember.id : 'tm_boss',
+        name: senderDisplayName,
+        forwardOrigin,
+        hasPhoto
+      });
+
+      if (!distResult.ok) {
+        await sendTelegramMessage(token, chatId, `⚠️ Xatolik: ${distResult.error}`);
+        return;
+      }
+
+      const results = distResult.results;
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      let msg = `✂️ <b>AVTOMAT KESIMXONA UCHUN KUNLIK PLAN QABUL QILINDI!</b>\n\n`;
+      msg += `👤 <b>Manba:</b> <b>${escapeHtml(senderDisplayName)}</b>\n`;
+      if (hasPhoto) {
+        msg += `📷 <b>Jadval:</b> <i>Kroy hisoboti / andaza fotosi biriktirildi</i>\n`;
+      }
+      msg += `⚡ <b>Muhimlik darajasi:</b> 🚨 <b>JUDA ZARUR (O‘TA SHOSHILINCH)</b>\n`;
+      msg += `🏭 <b>Maqsad:</b> Katta avtomat kesimxona uchun qoliplarni raskladka qilish\n`;
+      msg += `📅 <b>Sana:</b> ${todayStr}\n\n`;
+
+      // Dynamic grouping by worker
+      const workerGroups = {};
+      results.forEach(r => {
+        if (!workerGroups[r.worker.id]) {
+          workerGroups[r.worker.id] = { worker: r.worker, items: [] };
+        }
+        workerGroups[r.worker.id].items.push(r);
+      });
+
+      let wIdx = 1;
+      for (const wId of Object.keys(workerGroups)) {
+        const group = workerGroups[wId];
+        const w = group.worker;
+        msg += `${w.avatar} <b>${wIdx++}. ${escapeHtml(w.name)}</b>ga biriktirildi (${group.items.length} ta):\n`;
+        group.items.forEach((t, i) => {
+          msg += `   ${i + 1}. [${escapeHtml(t.order.orderNumber)}] <b>${escapeHtml(t.order.title)}</b>`;
+          if (t.qty) msg += ` — <b>${t.qty} dona</b>`;
+          msg += ` (⏰ ${t.time}, ~${t.estHours}s) — 🚨 <i>Juda zarur</i>`;
+          if (t.matchedRule) {
+            msg += ` <i>[Qoida: ${escapeHtml(t.matchedRule.prefix)}]</i>`;
+          }
+          msg += `\n`;
+          if (t.stage.notes) msg += `      📝 <i>${escapeHtml(t.stage.notes)}</i>\n`;
+        });
+        msg += `\n`;
+      }
+
+      msg += `<i>✅ Barcha vazifalar shogirdlarning kun tartibiga <b>«🚨 JUDA ZARUR»</b> belgisi bilan kiritildi va saytda real-vaqtda aks etdi!</i>`;
+
+      const inlineKeyboard = {
+        reply_markup: {
+          inline_keyboard: results.slice(0, 4).map(r => [
+            {
+              text: `📥 ${r.worker.name}: [${r.order.orderNumber}] Qabul qilish`,
+              callback_data: `accept_corp_${r.order.id}__${r.stage.id}`
+            },
+            {
+              text: `▶️ Boshlash`,
+              callback_data: `start_corp_${r.order.id}__${r.stage.id}`
+            }
+          ])
+        }
+      };
+
+      // Send confirmation to current chat
+      await sendTelegramMessage(token, chatId, msg, inlineKeyboard);
+
+      // If Kesim group is configured and different from current chat, also send there!
+      if (corporateDb.settings.kesimGroupId && String(corporateDb.settings.kesimGroupId) !== String(chatId)) {
+        await sendTelegramMessage(token, corporateDb.settings.kesimGroupId, msg, inlineKeyboard);
+      }
+      if (corporateDb.settings.constructorGroupId && String(corporateDb.settings.constructorGroupId) !== String(chatId)) {
+        await sendTelegramMessage(token, corporateDb.settings.constructorGroupId, msg, inlineKeyboard);
+      }
+
+      return;
+    }
+
     // Command: /holat or /vazifalar
     if (text === '/holat' || text === '/vazifalar') {
+      const isKesimGroup = String(chatId) === corporateDb.settings.kesimGroupId;
       const isConstGroup = String(chatId) === corporateDb.settings.constructorGroupId;
       const isModelGroup = String(chatId) === corporateDb.settings.modelxonaGroupId;
 
@@ -1018,12 +1651,16 @@ async function handleTelegramUpdate(token, update) {
         (ord.stages || []).forEach(st => {
           if (st.status === 'completed') return;
 
-          const isConstStg = st.role === 'assistant_constructor' || /andaza|bich|lekalo/i.test(st.name || '');
-          if (isConstGroup && isConstStg) {
+          const isCutterStg = st.role === 'cutter' || /kesim|kroy|bich/i.test(st.name || '');
+          const isConstStg = st.role === 'assistant_constructor' || /andaza|lekalo|gradatsiya/i.test(st.name || '');
+
+          if (isKesimGroup && isCutterStg) {
             groupFilteredStages.push({ ...st, orderNumber: ord.orderNumber, orderTitle: ord.title });
-          } else if (isModelGroup && !isConstStg) {
+          } else if (isConstGroup && (isConstStg || isCutterStg)) {
             groupFilteredStages.push({ ...st, orderNumber: ord.orderNumber, orderTitle: ord.title });
-          } else if (!isConstGroup && !isModelGroup) {
+          } else if (isModelGroup && !isConstStg && !isCutterStg) {
+            groupFilteredStages.push({ ...st, orderNumber: ord.orderNumber, orderTitle: ord.title });
+          } else if (!isConstGroup && !isModelGroup && !isKesimGroup) {
             groupFilteredStages.push({ ...st, orderNumber: ord.orderNumber, orderTitle: ord.title });
           }
         });
@@ -1134,15 +1771,106 @@ async function handleTelegramUpdate(token, update) {
     if (text === '/start') {
       const welcome = 
         `🌟 <b>IntelliDay — Bosh Konstruktor & Modelxona Assistent Boti</b>\n\n` +
-        `Assalomu alaykum! Ushbu bot shaxsiy kun tartibi, Konstruktorlar guruhi va Modelxona guruhini birlashtiradi:\n\n` +
+        `Assalomu alaykum! Ushbu bot shaxsiy kun tartibi, Konstruktorlar, Kesim (Kroy) va Modelxona guruhlarini birlashtiradi:\n\n` +
+        `✂️ <b>/kesim</b> yoki <b>/plan</b> — Kesim bo‘limiga kunlik plan joylash (Nozima va Charosga avtomatik bo‘lib beradi)\n` +
         `🔐 <b>/login</b> — Tizimga kirish kodi va 1-klik havolasini olish\n` +
         `📍 <b>/chatid</b> — Guruh ID sini bilish va guruhni tizimga ulash\n` +
         `📌 <b>/status</b> — Sizning shaxsiy holatingiz (Band / Bo‘sh)\n` +
         `📋 <b>/vazifalar</b> — Guruhdagi faol vazifalar va muddatlar (ETA)\n` +
         `👗 <b>/zakazlar</b> — Barcha modelxona zakazlari holati\n` +
-        `👥 <b>/xodimlar</b> — Shogirdlar va chevarlarning bandlik holati\n` +
+        `👥 <b>/xodimlar</b> — Shogirdlar, chevarlar va bichuvchilar bandlik holati\n` +
         `📅 <b>/bugun</b> — Bugungi shaxsiy rejalaringiz`;
       await sendTelegramMessage(token, chatId, welcome);
+      return;
+    }
+
+    // --- /qoidalar: List configured cutting rules ---
+    if (text === '/qoidalar' || text === '/rules') {
+      const rules = corporateDb.cuttingRules || [];
+      let msg = `✂️ <b>Kesimxona Zakazlarini Taqsimlash Qoidalari</b>\n\n`;
+      if (rules.length === 0) {
+        msg += `<i>Hozircha maxsus qoidalar kiritilmagan. Buyurtmalar yuklamaga qarab teng taqsimlanadi.</i>\n\n`;
+      } else {
+        rules.forEach((r, i) => {
+          const w = corporateDb.teamMembers.find(t => t.id === r.workerId);
+          const avatar = w ? w.avatar : '👤';
+          msg += `${i + 1}. 🏷️ <b>[${escapeHtml(r.prefix)}]</b> ➔ ${avatar} <b>${escapeHtml(r.workerName || (w ? w.name : r.workerId))}</b>\n`;
+          if (r.notes) msg += `   📝 <i>${escapeHtml(r.notes)}</i>\n`;
+        });
+        msg += `\n`;
+      }
+      msg += `💡 <b>Yangi qoida kiritish:</b>\n<code>/qoida &lt;prefiks&gt; &lt;xodim&gt;</code>\n`;
+      msg += `<i>Masalan:</i> <code>/qoida KP Oqilbek</code> yoki <code>/qoida DC Qobiljon</code>\n\n`;
+      msg += `🗑️ <b>Qoidani o‘chirish:</b>\n<code>/ochir_qoida &lt;prefiks&gt;</code>\n`;
+      msg += `<i>Masalan:</i> <code>/ochir_qoida KP</code>`;
+
+      await sendTelegramMessage(token, chatId, msg);
+      return;
+    }
+
+    // --- /qoida <prefiks> <xodim>: Add or update cutting rule ---
+    if (text.startsWith('/qoida ') || text.startsWith('/rule ')) {
+      const parts = rawText.trim().split(/\s+/).slice(1);
+      if (parts.length < 2) {
+        await sendTelegramMessage(token, chatId,
+          `⚠️ <b>Format noto‘g‘ri!</b>\n\nTo‘g‘ri format:\n<code>/qoida &lt;prefiks&gt; &lt;xodim&gt;</code>\n\n` +
+          `Masalan:\n<code>/qoida KP Oqilbek</code>\n<code>/qoida DC Qobiljon</code>`
+        );
+        return;
+      }
+      const prefix = parts[0].toUpperCase().trim();
+      const workerQuery = parts.slice(1).join(' ').toLowerCase().trim();
+
+      const matchedWorker = corporateDb.teamMembers.find(t =>
+        t.name.toLowerCase().includes(workerQuery) ||
+        t.id.toLowerCase().includes(workerQuery) ||
+        (t.login && t.login.toLowerCase().includes(workerQuery))
+      );
+
+      if (!matchedWorker) {
+        const available = corporateDb.teamMembers
+          .filter(t => t.role === 'assistant_constructor' || t.id === 'tm_oqilbek' || t.id === 'tm_qobiljon')
+          .map(t => `${t.avatar} ${t.name}`)
+          .join(', ');
+        await sendTelegramMessage(token, chatId,
+          `⚠️ Xodim topilmadi: "<b>${escapeHtml(workerQuery)}</b>"\n\nMavjud shogirdlar: ${available}`
+        );
+        return;
+      }
+
+      corporateDb.cuttingRules = corporateDb.cuttingRules || [];
+      corporateDb.cuttingRules = corporateDb.cuttingRules.filter(r => r.prefix.toUpperCase() !== prefix);
+      corporateDb.cuttingRules.push({
+        id: `rule_${Date.now()}`,
+        prefix,
+        workerId: matchedWorker.id,
+        workerName: matchedWorker.name,
+        notes: `Telegram orqali kiritilgan: ${prefix} seriyasi -> ${matchedWorker.name}`
+      });
+
+      saveCorporateDB();
+
+      await sendTelegramMessage(token, chatId,
+        `✅ <b>Qoida muvaffaqiyatli saqlandi!</b>\n\n` +
+        `🏷️ Prefiks: <b>[${escapeHtml(prefix)}]</b>\n` +
+        `👷‍♂️ Mas’ul shogird: ${matchedWorker.avatar} <b>${escapeHtml(matchedWorker.name)}</b>\n\n` +
+        `Endi boshida <b>${escapeHtml(prefix)}</b> bo‘lgan buyurtmalar bot orqali avtomatik ravishda <b>${escapeHtml(matchedWorker.name)}</b>ga «🚨 JUDA ZARUR» qilib biriktiriladi!`
+      );
+      return;
+    }
+
+    // --- /ochir_qoida <prefiks>: Delete cutting rule ---
+    if (text.startsWith('/ochir_qoida ') || text.startsWith('/del_rule ')) {
+      const prefix = text.replace(/^\/(ochir_qoida|del_rule)\s+/i, '').trim().toUpperCase();
+      corporateDb.cuttingRules = corporateDb.cuttingRules || [];
+      const beforeCount = corporateDb.cuttingRules.length;
+      corporateDb.cuttingRules = corporateDb.cuttingRules.filter(r => r.prefix.toUpperCase() !== prefix);
+      if (corporateDb.cuttingRules.length < beforeCount) {
+        saveCorporateDB();
+        await sendTelegramMessage(token, chatId, `🗑️ <b>[${escapeHtml(prefix)}]</b> qoidasi muvaffaqiyatli o‘chirildi.`);
+      } else {
+        await sendTelegramMessage(token, chatId, `⚠️ <b>[${escapeHtml(prefix)}]</b> bo‘yicha qoida topilmadi.`);
+      }
       return;
     }
 
@@ -1498,6 +2226,100 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // --- API: Get User Profile Details ---
+  if (pathname === '/api/user/profile' && req.method === 'GET') {
+    const userId = reqUrl.searchParams.get('userId');
+    const user = corporateDb.teamMembers.find(t => t.id === userId);
+    if (!user) {
+      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Foydalanuvchi topilmadi' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      user: sanitizeUser(user),
+      hasTelegramLinked: !!user.telegramChatId,
+      botUsername: cachedBotUsername || (corporateDb.settings?.botUsername || '')
+    }));
+    return;
+  }
+
+  // --- API: Update User Profile (Telegram username, Password, Avatar, Name, Phone) ---
+  if (pathname === '/api/user/profile' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { userId, name, phone, telegramUsername, avatar, currentPassword, newPassword } = JSON.parse(body || '{}');
+        if (!userId) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, error: 'Foydalanuvchi ID ko‘rsatilmadi' }));
+          return;
+        }
+
+        const user = corporateDb.teamMembers.find(t => t.id === userId);
+        if (!user) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, error: 'Foydalanuvchi topilmadi' }));
+          return;
+        }
+
+        // Parol almashtirish tekshiruvi
+        if (newPassword && String(newPassword).trim()) {
+          const newPassClean = String(newPassword).trim();
+          if (newPassClean.length < 4) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: 'Yangi parol kamida 4 ta belgidan iborat bo‘lishi kerak' }));
+            return;
+          }
+          if (!verifyPassword(user, currentPassword)) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: 'Joriy parol noto‘g‘ri kiritildi' }));
+            return;
+          }
+          user.passwordHash = hashPassword(newPassClean);
+          user.password = newPassClean;
+          delete user.pin;
+        }
+
+        // Ism
+        if (name && String(name).trim()) {
+          user.name = String(name).trim();
+        }
+
+        // Telefon
+        if (phone !== undefined) {
+          user.phone = String(phone).trim();
+        }
+
+        // Telegram username
+        if (telegramUsername !== undefined) {
+          const cleanTg = String(telegramUsername).trim().replace(/^@/, '');
+          user.telegramUsername = cleanTg ? ('@' + cleanTg) : '';
+        }
+
+        // Avatar (rasm base64 yoki emoji)
+        if (avatar !== undefined && String(avatar).trim()) {
+          user.avatar = String(avatar).trim();
+        }
+
+        saveCorporateDB();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Profil sozlamalari muvaffaqiyatli saqlandi',
+          user: sanitizeUser(user)
+        }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
   // --- API: Get User Plan ---
   if (pathname.startsWith('/api/user/') && pathname.endsWith('/plan') && req.method === 'GET') {
     const userId = pathname.split('/')[3];
@@ -1785,9 +2607,83 @@ const server = http.createServer((req, res) => {
         }
         if (Array.isArray(cData.orders)) corporateDb.orders = cData.orders;
         if (cData.settings) corporateDb.settings = { ...corporateDb.settings, ...cData.settings };
+        if (Array.isArray(cData.cuttingRules)) corporateDb.cuttingRules = cData.cuttingRules;
         saveCorporateDB();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: true, data: publicCorporateDb() }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // --- API: Get Cutting Assignment Rules ---
+  if (pathname === '/api/corporate/cutting-rules' && req.method === 'GET') {
+    const workers = (corporateDb.teamMembers || [])
+      .filter(t => t.role === 'assistant_constructor' || t.id === 'tm_oqilbek' || t.id === 'tm_qobiljon' || t.isAdmin)
+      .map(sanitizeUser);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      rules: corporateDb.cuttingRules || [],
+      workers
+    }));
+    return;
+  }
+
+  // --- API: Save/Add/Delete Cutting Assignment Rules ---
+  if (pathname === '/api/corporate/cutting-rules' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        corporateDb.cuttingRules = corporateDb.cuttingRules || [];
+
+        if (payload.action === 'add') {
+          const { prefix, workerId, notes } = payload;
+          if (!prefix || !workerId) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: 'Prefiks va xodim ko‘rsatilishi shart' }));
+            return;
+          }
+          const cleanPrefix = String(prefix).trim().toUpperCase();
+          const targetWorker = corporateDb.teamMembers.find(t => t.id === workerId);
+          if (!targetWorker) {
+            res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: 'Xodim topilmadi' }));
+            return;
+          }
+          corporateDb.cuttingRules = corporateDb.cuttingRules.filter(r => r.prefix.toUpperCase() !== cleanPrefix);
+          const newRule = {
+            id: `rule_${Date.now()}`,
+            prefix: cleanPrefix,
+            workerId: targetWorker.id,
+            workerName: targetWorker.name,
+            notes: notes ? String(notes).trim() : `${cleanPrefix} seriyali buyurtmalar`
+          };
+          corporateDb.cuttingRules.push(newRule);
+        } else if (payload.action === 'delete') {
+          const { id, prefix } = payload;
+          if (id) {
+            corporateDb.cuttingRules = corporateDb.cuttingRules.filter(r => r.id !== id);
+          } else if (prefix) {
+            corporateDb.cuttingRules = corporateDb.cuttingRules.filter(r => r.prefix.toUpperCase() !== String(prefix).trim().toUpperCase());
+          }
+        } else if (Array.isArray(payload.rules)) {
+          corporateDb.cuttingRules = payload.rules;
+        }
+
+        saveCorporateDB();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Qoidalar muvaffaqiyatli saqlandi',
+          rules: corporateDb.cuttingRules
+        }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: e.message }));
@@ -1963,6 +2859,8 @@ const server = http.createServer((req, res) => {
       maskedToken: token ? token.substring(0, 7) + '...' + token.slice(-4) : '',
       constructorGroupId: corporateDb.settings?.constructorGroupId || '',
       constructorGroupName: corporateDb.settings?.constructorGroupName || 'Konstruktorlar guruhi',
+      kesimGroupId: corporateDb.settings?.kesimGroupId || '',
+      kesimGroupName: corporateDb.settings?.kesimGroupName || 'Kesim (Kroy) guruhi',
       modelxonaGroupId: corporateDb.settings?.modelxonaGroupId || '',
       modelxonaGroupName: corporateDb.settings?.modelxonaGroupName || 'Modelxona guruhi',
       connectedGroups: corporateDb.settings?.connectedGroups || []
@@ -1986,8 +2884,15 @@ const server = http.createServer((req, res) => {
 
         let targetId = customGroupId;
         let isConst = groupType === 'constructor';
+        let isKesim = groupType === 'kesim';
         if (!targetId) {
-          targetId = isConst ? corporateDb.settings.constructorGroupId : corporateDb.settings.modelxonaGroupId;
+          if (isKesim) {
+            targetId = corporateDb.settings.kesimGroupId || corporateDb.settings.constructorGroupId;
+          } else if (isConst) {
+            targetId = corporateDb.settings.constructorGroupId;
+          } else {
+            targetId = corporateDb.settings.modelxonaGroupId;
+          }
         }
         if (!targetId) {
           targetId = db.settings.telegramChatId;
@@ -1995,25 +2900,25 @@ const server = http.createServer((req, res) => {
 
         if (!targetId) {
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ success: false, error: 'Guruh ID topilmadi. Avval guruh ID sini kiriting yoki guruhda /set_konstruktor yoki /set_modelxona buyrug‘ini bering.' }));
+          res.end(JSON.stringify({ success: false, error: 'Guruh ID topilmadi. Avval guruh ID sini kiriting yoki guruhda /set_kesim, /set_konstruktor yoki /set_modelxona buyrug‘ini bering.' }));
           return;
         }
 
         // Mock test stage and order
         const mockOrder = {
           id: 'test_' + Date.now(),
-          orderNumber: isConst ? 'ZAK-2026-TEST' : 'NAMUNA-2026-TEST',
-          title: isConst ? 'Kuzgi nimcha va andaza to‘plami' : 'Ipak kechki libos (Etalon namuna)',
-          clientOrDept: isConst ? 'Konstruktorlik laboratoriyasi' : 'Bosh eksport bo‘limi',
-          priority: 'high',
+          orderNumber: isKesim ? 'KESIM-2026-TEST' : (isConst ? 'ZAK-2026-TEST' : 'NAMUNA-2026-TEST'),
+          title: isKesim ? 'Kuzgi Palto va Nimcha kroyi' : (isConst ? 'Kuzgi nimcha va andaza to‘plami' : 'Ipak kechki libos (Etalon namuna)'),
+          clientOrDept: isKesim ? 'Kesim (Kroy) sexi' : (isConst ? 'Konstruktorlik laboratoriyasi' : 'Bosh eksport bo‘limi'),
+          priority: isKesim ? 'urgent' : 'high',
           notes: 'Test sinovi: Tugmalarni bosib ko‘ring, tizimda real vaqtda yangilanadi!'
         };
 
         const mockStage = {
           id: 'stg_test_1',
-          name: isConst ? '✂️ Andaza loyihalash & Gradatsiya (Lekalo)' : '🪡 Namuna tikish & Montaj',
-          role: isConst ? 'assistant_constructor' : 'sample_tailor',
-          assignedTo: isConst ? 'tm_oqilbek' : 'tm_kamola_master',
+          name: isKesim ? '✂️ Kesim (Kroy) & Dublyaj' : (isConst ? '✂️ Andaza loyihalash & Gradatsiya (Lekalo)' : '🪡 Namuna tikish & Montaj'),
+          role: isKesim ? 'cutter' : (isConst ? 'assistant_constructor' : 'sample_tailor'),
+          assignedTo: isKesim ? 'tm_nozima' : (isConst ? 'tm_oqilbek' : 'tm_kamola_master'),
           startTime: new Date().toISOString(),
           endTime: new Date(Date.now() + 3.5 * 3600 * 1000).toISOString(),
           effectiveHours: 3.5,
@@ -2061,6 +2966,12 @@ const server = http.createServer((req, res) => {
         if (payload.constructorGroupName) {
           corporateDb.settings.constructorGroupName = payload.constructorGroupName.trim();
         }
+        if (payload.kesimGroupId !== undefined) {
+          corporateDb.settings.kesimGroupId = payload.kesimGroupId.trim();
+        }
+        if (payload.kesimGroupName) {
+          corporateDb.settings.kesimGroupName = payload.kesimGroupName.trim();
+        }
         if (payload.modelxonaGroupId !== undefined) {
           corporateDb.settings.modelxonaGroupId = payload.modelxonaGroupId.trim();
         }
@@ -2079,6 +2990,46 @@ const server = http.createServer((req, res) => {
         }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // --- API: Create & Distribute Kesim (Kroy) Plan ---
+  if (pathname === '/api/corporate/kesim-plan' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        let items = [];
+        if (Array.isArray(payload.items)) {
+          items = payload.items;
+        } else if (payload.text) {
+          items = parseKesimPlanText(payload.text);
+        }
+        if (!items || items.length === 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, error: 'Reja ma’lumotlari topilmadi' }));
+          return;
+        }
+
+        const distResult = distributeKesimPlan(items, {
+          id: payload.senderId || 'tm_boss',
+          name: payload.senderName || 'Bosh Konstruktor'
+        });
+
+        if (!distResult.ok) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, error: distResult.error }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, results: distResult.results }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: e.message }));
       }
     });
