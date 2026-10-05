@@ -471,7 +471,8 @@ function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
       if (!st.assignedTo) return;
 
       const currentUntil = employeeBusyUntil.get(st.assignedTo) || new Date(now);
-      const hours = (st.estimatedHours || 2) * (1 + settings.delayBufferPercent / 100);
+      const estH = (st.estimatedHours !== undefined && st.estimatedHours !== null) ? Number(st.estimatedHours) : 2;
+      const hours = estH * (1 + settings.delayBufferPercent / 100);
       const finishTime = addWorkHours(currentUntil, hours, settings);
       employeeBusyUntil.set(st.assignedTo, finishTime);
     });
@@ -494,7 +495,8 @@ function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
     // Effective hours with buffer and speed multiplier
     const speed = emp && emp.speedMultiplier ? emp.speedMultiplier : 1.0;
     const buffer = 1 + (settings.delayBufferPercent / 100);
-    const effectiveHours = Math.max(0.5, (st.estimatedHours || 2) * buffer / speed);
+    const baseHours = (st.estimatedHours !== undefined && st.estimatedHours !== null) ? Number(st.estimatedHours) : 2;
+    const effectiveHours = Math.max(0.1, (baseHours * buffer) / speed);
 
     const stageEnd = addWorkHours(stageStart, effectiveHours, settings);
 
@@ -518,11 +520,14 @@ function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
       assignedTo: assignedId,
       assignedName: emp ? emp.name : 'Belgilanmagan',
       assignedAvatar: emp ? getMemberAvatarEmoji(emp) : '👤',
-      estimatedHours: st.estimatedHours || 2,
+      estimatedHours: (st.estimatedHours !== undefined && st.estimatedHours !== null) ? Number(st.estimatedHours) : 2,
       unitHours: st.unitHours,
+      unitMinutes: st.unitMinutes,
+      totalMinutes: st.totalMinutes,
+      timeUnit: st.timeUnit || 'minute',
       qtyBasis: st.qtyBasis,
       multiplier: st.multiplier,
-      effectiveHours: parseFloat(effectiveHours.toFixed(1)),
+      effectiveHours: parseFloat(effectiveHours.toFixed(2)),
       startTime: stageStart.toISOString(),
       endTime: stageEnd.toISOString(),
       status: st.status || 'pending'
@@ -537,9 +542,14 @@ function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
     const sDate = new Date(st.startTime);
     const eDate = new Date(st.endTime);
     const opt = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    const effMinutes = Math.round(st.effectiveHours * 60);
+    const effTimeFormatted = effMinutes < 60 
+      ? `${effMinutes} daqiqa` 
+      : `${st.effectiveHours} soat (${effMinutes} daq)`;
+
     explanation += `• <b>${i + 1}-bosqich (${st.name})</b>: ${getMemberAvatarEmoji(st.assignedAvatar || emp)} ${st.assignedName} qo‘lida ` +
       `<b>${sDate.toLocaleDateString('uz-UZ', opt)}</b> da boshlanadi va ` +
-      `<b>${eDate.toLocaleDateString('uz-UZ', opt)}</b> da tayyor bo‘ladi (${st.effectiveHours}s).\n`;
+      `<b>${eDate.toLocaleDateString('uz-UZ', opt)}</b> da tayyor bo‘ladi (${effTimeFormatted}).\n`;
   });
 
   const etaObj = new Date(finalETA);

@@ -2644,6 +2644,44 @@ kbd {
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
 }
 
+/* Time unit toggle: Daqiqa (Minut) vs Soat */
+.calc-unit-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+}
+
+.calc-time-unit-btn {
+  padding: 0.32rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.calc-time-unit-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.calc-time-unit-btn.active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.28), rgba(99, 102, 241, 0.28));
+  border-color: var(--accent-cyan);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
 .calc-add-model-btn {
   border: 1px dashed rgba(6, 182, 212, 0.45);
   background: rgba(6, 182, 212, 0.05);

@@ -27,6 +27,7 @@ const CorporateManager = {
   currentViewTab: 'orders', // 'orders' | 'calculator' | 'team' | 'worker'
   activeWorkerId: 'all', // 'all' (Chief view) or employee ID
   isCorporateMode: false,
+  calcTimeUnit: 'minute', // 'minute' (standart daqiqa) | 'hour' (soat)
 
   getMemberEmoji(member) {
     if (!member) return '👤';
@@ -407,11 +408,71 @@ const CorporateManager = {
     }).join('');
   },
 
+  setTimeUnit(newUnit) {
+    if (this.calcTimeUnit === newUnit) return;
+    this.calcTimeUnit = newUnit;
+
+    document.querySelectorAll('.calc-time-unit-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.unit === newUnit);
+    });
+
+    const isMinute = newUnit === 'minute';
+    const rows = document.querySelectorAll('.calc-stage-row');
+    rows.forEach(row => {
+      const input = row.querySelector('.calc-st-hours');
+      const label = row.querySelector('.calc-st-unit-label');
+      const basis = row.dataset.basis === 'piece' ? 'dona' : 'model';
+
+      if (label) {
+        label.textContent = `1 ${basis} (${isMinute ? 'daqiqa' : 'soat'})`;
+      }
+
+      if (input) {
+        const currentVal = parseFloat(input.value) || 0;
+        if (isMinute) {
+          // Soatdan minutga o'tkazish
+          input.value = Math.max(1, Math.round(currentVal * 60));
+          input.step = '5';
+          input.min = '1';
+          input.max = '6000';
+        } else {
+          // Minutdan soatga o'tkazish
+          input.value = Math.max(0.05, parseFloat((currentVal / 60).toFixed(2)));
+          input.step = '0.1';
+          input.min = '0.05';
+          input.max = '100';
+        }
+      }
+    });
+
+    this.livePreviewETA();
+    if (window.App) {
+      window.App.showToast(isMinute ? '⏱️ Vaqt o‘lchovi minutga (daqiqaga) o‘tkazildi' : '⏳ Vaqt o‘lchovi soatga o‘tkazildi');
+    }
+  },
+
   stageRowHtml(index, data = {}) {
     const name = data.name || (index === 1 ? 'Andaza & Gradatsiya (Lekalo)' : index === 2 ? 'Bichish & Dublyaj' : index === 3 ? 'Modelxonada Namuna Tikish' : 'Primera & Bosh Tekshiruv');
     const role = data.role || (index === 1 ? 'assistant_constructor' : index === 2 ? 'cutter' : index === 3 ? 'sample_tailor' : 'head_constructor');
     const basis = data.basis || (index === 2 || index === 3 ? 'piece' : 'model');
-    const hours = data.hours !== undefined ? data.hours : (index === 1 ? 4.0 : index === 2 ? 1.5 : index === 3 ? 6.0 : 1.0);
+    
+    // Minutlarda aniqlash (standart qiymatlar)
+    let minutes = 30;
+    if (data.minutes !== undefined) {
+      minutes = data.minutes;
+    } else if (data.hours !== undefined) {
+      minutes = Math.round(data.hours * 60);
+    } else {
+      minutes = index === 1 ? 180 : index === 2 ? 30 : index === 3 ? 60 : 15;
+    }
+
+    const isMinute = this.calcTimeUnit !== 'hour';
+    const displayVal = isMinute ? minutes : parseFloat((minutes / 60).toFixed(2));
+    const stepVal = isMinute ? '5' : '0.1';
+    const minVal = isMinute ? '1' : '0.05';
+    const maxVal = isMinute ? '6000' : '100';
+    const unitText = isMinute ? 'daqiqa' : 'soat';
+
     const assignedId = data.assignedTo || '';
     const labelTitle = data.label || `${index}-bosqich`;
     const stageKey = data.stageKey || (index === 1 ? 'pattern' : index === 2 ? 'cutting' : index === 3 ? 'sample_sewing' : 'fitting_qc');
@@ -429,9 +490,9 @@ const CorporateManager = {
             ${this.getEmployeeOptions(role, assignedId)}
           </select>
         </div>
-        <div class="form-group" style="flex: 1; margin-bottom: 0; min-width: 115px;">
-          <label class="form-label calc-st-unit-label" style="font-size: 0.75rem;">1 ${basis === 'piece' ? 'dona' : 'model'} (soat)</label>
-          <input type="number" class="form-input calc-st-hours" value="${hours}" step="0.5" min="0.1" max="100" oninput="CorporateManager.livePreviewETA()">
+        <div class="form-group" style="flex: 1.2; margin-bottom: 0; min-width: 125px;">
+          <label class="form-label calc-st-unit-label" style="font-size: 0.75rem;">1 ${basis === 'piece' ? 'dona' : 'model'} (${unitText})</label>
+          <input type="number" class="form-input calc-st-hours" value="${displayVal}" step="${stepVal}" min="${minVal}" max="${maxVal}" oninput="CorporateManager.livePreviewETA()">
           <span class="calc-st-total"></span>
         </div>
         <button type="button" class="calc-stage-remove" title="Ushbu bosqichni o‘chirib tashlash" onclick="CorporateManager.removeStageRow(this)">
@@ -486,7 +547,8 @@ const CorporateManager = {
       name: `Qo‘shimcha bosqich #${count + 1}`,
       role: 'cutter',
       basis: 'piece',
-      hours: 1.0,
+      minutes: 30,
+      hours: 0.5,
       stageKey: 'custom',
       label: `${count + 1}-bosqich`
     });
@@ -506,29 +568,29 @@ const CorporateManager = {
     if (presetType === 'ready_pattern') {
       // Lekalosi tayyor! -> Bichish, Tikuv, Primera
       stagesConfig = [
-        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', hours: 1.5, stageKey: 'cutting', label: '1-bosqich: Bichish & Tayyorlov' },
-        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', hours: 6.0, stageKey: 'sample_sewing', label: '2-bosqich: Namuna Tikish' },
-        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', hours: 1.0, stageKey: 'fitting_qc', label: '3-bosqich: Tekshiruv' }
+        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', minutes: 30, hours: 0.5, stageKey: 'cutting', label: '1-bosqich: Bichish & Tayyorlov' },
+        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', minutes: 60, hours: 1.0, stageKey: 'sample_sewing', label: '2-bosqich: Namuna Tikish' },
+        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', minutes: 15, hours: 0.25, stageKey: 'fitting_qc', label: '3-bosqich: Tekshiruv' }
       ];
     } else if (presetType === 'ready_cut') {
       // Tayyor bichilgan! -> Tikuv, Primera
       stagesConfig = [
-        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', hours: 6.0, stageKey: 'sample_sewing', label: '1-bosqich: Namuna Tikish' },
-        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', hours: 1.0, stageKey: 'fitting_qc', label: '2-bosqich: Tekshiruv' }
+        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', minutes: 60, hours: 1.0, stageKey: 'sample_sewing', label: '1-bosqich: Namuna Tikish' },
+        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', minutes: 15, hours: 0.25, stageKey: 'fitting_qc', label: '2-bosqich: Tekshiruv' }
       ];
     } else if (presetType === 'pattern_cut') {
       // Faqat Lekalo & Bichish
       stagesConfig = [
-        { name: 'Andaza & Gradatsiya (Lekalo)', role: 'assistant_constructor', basis: 'model', hours: 4.0, stageKey: 'pattern', label: '1-bosqich: Andaza (Lekalo)' },
-        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', hours: 1.5, stageKey: 'cutting', label: '2-bosqich: Bichish & Tayyorlov' }
+        { name: 'Andaza & Gradatsiya (Lekalo)', role: 'assistant_constructor', basis: 'model', minutes: 180, hours: 3.0, stageKey: 'pattern', label: '1-bosqich: Andaza (Lekalo)' },
+        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', minutes: 30, hours: 0.5, stageKey: 'cutting', label: '2-bosqich: Bichish & Tayyorlov' }
       ];
     } else {
       // Full: 4 bosqich
       stagesConfig = [
-        { name: 'Andaza & Gradatsiya (Lekalo)', role: 'assistant_constructor', basis: 'model', hours: 4.0, stageKey: 'pattern', label: '1-bosqich: Andaza (Lekalo)' },
-        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', hours: 1.5, stageKey: 'cutting', label: '2-bosqich: Bichish & Tayyorlov' },
-        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', hours: 6.0, stageKey: 'sample_sewing', label: '3-bosqich: Namuna Tikish' },
-        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', hours: 1.0, stageKey: 'fitting_qc', label: '4-bosqich: Primera & Tekshiruv' }
+        { name: 'Andaza & Gradatsiya (Lekalo)', role: 'assistant_constructor', basis: 'model', minutes: 180, hours: 3.0, stageKey: 'pattern', label: '1-bosqich: Andaza (Lekalo)' },
+        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', minutes: 30, hours: 0.5, stageKey: 'cutting', label: '2-bosqich: Bichish & Tayyorlov' },
+        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', minutes: 60, hours: 1.0, stageKey: 'sample_sewing', label: '3-bosqich: Namuna Tikish' },
+        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', minutes: 15, hours: 0.25, stageKey: 'fitting_qc', label: '4-bosqich: Primera & Tekshiruv' }
       ];
     }
 
@@ -629,10 +691,22 @@ const CorporateManager = {
 
           <!-- Dynamic Stages Setup -->
           <div style="margin: 1.25rem 0 0.5rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
-            <h4 style="margin: 0; color: var(--accent-cyan);">
-              Ish Bosqichlari va Biriktirilgan Xodimlar:
-            </h4>
-            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Vaqt 1 model / 1 dona uchun kiritiladi</span>
+            <div>
+              <h4 style="margin: 0; color: var(--accent-cyan);">
+                Ish Bosqichlari va Biriktirilgan Xodimlar:
+              </h4>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal; display: block; margin-top: 2px;">
+                1 dona yoki 1 model uchun ketadigan vaqt
+              </span>
+            </div>
+            <div class="calc-unit-toggle" title="Vaqt o‘lchov birligini tanlang">
+              <button type="button" class="calc-time-unit-btn ${this.calcTimeUnit === 'minute' ? 'active' : ''}" data-unit="minute" onclick="CorporateManager.setTimeUnit('minute')">
+                ⏱️ Daqiqada (Minut)
+              </button>
+              <button type="button" class="calc-time-unit-btn ${this.calcTimeUnit === 'hour' ? 'active' : ''}" data-unit="hour" onclick="CorporateManager.setTimeUnit('hour')">
+                ⏳ Soatda
+              </button>
+            </div>
           </div>
 
           <!-- Quick Presets -->
@@ -759,17 +833,48 @@ const CorporateManager = {
     const { modelCount, totalPieces } = this.collectModelsFromForm();
     const rows = document.querySelectorAll('.calc-stage-row');
     const stages = [];
+    const isMinute = this.calcTimeUnit !== 'hour';
+
     rows.forEach((row, i) => {
       const name = row.querySelector('.calc-st-name')?.value.trim() || `Bosqich ${i + 1}`;
       const assignedTo = row.querySelector('.calc-st-emp')?.value || '';
-      const unitHours = parseFloat(row.querySelector('.calc-st-hours')?.value) || 2;
+      const rawVal = parseFloat(row.querySelector('.calc-st-hours')?.value) || 0;
       const qtyBasis = row.dataset.basis === 'piece' ? 'piece' : 'model';
       const multiplier = qtyBasis === 'piece' ? totalPieces : modelCount;
-      const hours = parseFloat((unitHours * multiplier).toFixed(2));
+
+      let unitMinutes = 0;
+      let unitHours = 0;
+      let totalMinutes = 0;
+      let totalHours = 0;
+
+      if (isMinute) {
+        unitMinutes = Math.max(1, Math.round(rawVal));
+        unitHours = parseFloat((unitMinutes / 60).toFixed(3));
+        totalMinutes = Math.round(unitMinutes * multiplier);
+        totalHours = parseFloat((totalMinutes / 60).toFixed(2));
+      } else {
+        unitHours = Math.max(0.05, parseFloat(rawVal.toFixed(2)));
+        unitMinutes = Math.max(1, Math.round(unitHours * 60));
+        totalHours = parseFloat((unitHours * multiplier).toFixed(2));
+        totalMinutes = Math.round(totalHours * 60);
+      }
 
       const totalEl = row.querySelector('.calc-st-total');
       if (totalEl) {
-        totalEl.textContent = `× ${multiplier} ${qtyBasis === 'piece' ? 'dona' : 'model'} = ${hours} soat`;
+        const basisLabel = qtyBasis === 'piece' ? 'dona' : 'model';
+        if (isMinute) {
+          let timeText = '';
+          if (totalMinutes < 60) {
+            timeText = `${totalMinutes} daqiqa`;
+          } else {
+            const h = Math.floor(totalMinutes / 60);
+            const m = totalMinutes % 60;
+            timeText = m > 0 ? `${totalMinutes} daq (${h}s ${m}d)` : `${totalMinutes} daq (${h} soat)`;
+          }
+          totalEl.textContent = `× ${multiplier} ${basisLabel} = ${timeText}`;
+        } else {
+          totalEl.textContent = `× ${multiplier} ${basisLabel} = ${totalHours} soat (${totalMinutes} daq)`;
+        }
       }
 
       let stageKey = row.dataset.stageKey || '';
@@ -786,10 +891,13 @@ const CorporateManager = {
         name,
         stageKey,
         assignedTo,
+        unitMinutes,
         unitHours,
+        totalMinutes,
+        timeUnit: this.calcTimeUnit,
         qtyBasis,
         multiplier,
-        estimatedHours: hours,
+        estimatedHours: totalHours,
         status: i === 0 ? 'in_progress' : 'pending'
       });
     });
