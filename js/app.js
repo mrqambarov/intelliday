@@ -459,11 +459,23 @@ const App = {
     const workerSelect = document.getElementById('new-rule-worker');
     if (!container) return;
 
+    const getSafeAvatar = (w) => {
+      const av = (w && w.avatar) || '';
+      if (!av || av.startsWith('data:') || av.startsWith('http') || av.startsWith('/') || av.length > 8) {
+        if (w && w.role === 'head_constructor') return '👑';
+        if (w && w.role === 'assistant_constructor') return (w.id || '').includes('qobil') ? '📏' : '📐';
+        if (w && w.role === 'cutter') return '✂️';
+        if (w && w.role === 'sample_tailor') return '🪡';
+        return '👤';
+      }
+      return av;
+    };
+
     // Populate worker select options
     if (workerSelect && this._cuttingWorkers && this._cuttingWorkers.length > 0) {
       const currentVal = workerSelect.value;
       workerSelect.innerHTML = this._cuttingWorkers.map(w => 
-        `<option value="${w.id}">${w.avatar || '👤'} ${w.name} (${w.roleTitle || w.role || 'Shogird'})</option>`
+        `<option value="${w.id}">${getSafeAvatar(w)} ${w.name} (${w.roleTitle || w.role || 'Shogird'})</option>`
       ).join('');
       if (currentVal && Array.from(workerSelect.options).some(o => o.value === currentVal)) {
         workerSelect.value = currentVal;
@@ -497,7 +509,7 @@ const App = {
             <div style="min-width: 0; flex: 1;">
               <div style="font-weight: 600; font-size: 0.85rem; color: #fff; display: flex; align-items: center; gap: 0.35rem;">
                 <span style="color: var(--text-muted);">➔</span>
-                <span>${worker.avatar}</span>
+                <span>${getSafeAvatar(worker)}</span>
                 <span>${worker.name}</span>
               </div>
               ${rule.notes ? `<div style="font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${rule.notes}</div>` : ''}
@@ -604,9 +616,11 @@ const App = {
     const constInput = document.getElementById('set-tg-constructor-group');
     const kesimInput = document.getElementById('set-tg-kesim-group');
     const modelInput = document.getElementById('set-tg-modelxona-group');
+    const tikuvInput = document.getElementById('set-tg-tikuv-group');
     const constBadge = document.getElementById('tg-status-constructor');
     const kesimBadge = document.getElementById('tg-status-kesim');
     const modelBadge = document.getElementById('tg-status-modelxona');
+    const tikuvBadge = document.getElementById('tg-status-tikuv');
     const botBadge = document.getElementById('tg-bot-status-badge');
 
     try {
@@ -622,6 +636,9 @@ const App = {
         if (data.modelxonaGroupId && modelInput && !modelInput.value) {
           modelInput.value = data.modelxonaGroupId;
         }
+        if (data.tikuvGroupId && tikuvInput && !tikuvInput.value) {
+          tikuvInput.value = data.tikuvGroupId;
+        }
 
         if (constBadge) {
           if (data.constructorGroupId) {
@@ -635,6 +652,30 @@ const App = {
           }
         }
 
+        if (modelBadge) {
+          if (data.modelxonaGroupId) {
+            modelBadge.textContent = `🟢 Ulangan: ${data.modelxonaGroupName || 'Modelxona (Bichish)'}`;
+            modelBadge.style.background = 'rgba(16,185,129,0.18)';
+            modelBadge.style.color = '#34d399';
+          } else {
+            modelBadge.textContent = '⚪ Ulanmagan';
+            modelBadge.style.background = 'rgba(255,255,255,0.08)';
+            modelBadge.style.color = 'var(--text-muted)';
+          }
+        }
+
+        if (tikuvBadge) {
+          if (data.tikuvGroupId) {
+            tikuvBadge.textContent = `🟢 Ulangan: ${data.tikuvGroupName || 'Tikuv guruhi'}`;
+            tikuvBadge.style.background = 'rgba(236,72,153,0.2)';
+            tikuvBadge.style.color = '#f472b6';
+          } else {
+            tikuvBadge.textContent = '⚪ Ulanmagan';
+            tikuvBadge.style.background = 'rgba(255,255,255,0.08)';
+            tikuvBadge.style.color = 'var(--text-muted)';
+          }
+        }
+
         if (kesimBadge) {
           if (data.kesimGroupId) {
             kesimBadge.textContent = `🟢 Ulangan: ${data.kesimGroupName || 'Kesim guruhi'}`;
@@ -644,18 +685,6 @@ const App = {
             kesimBadge.textContent = '⚪ Ulanmagan';
             kesimBadge.style.background = 'rgba(255,255,255,0.08)';
             kesimBadge.style.color = 'var(--text-muted)';
-          }
-        }
-
-        if (modelBadge) {
-          if (data.modelxonaGroupId) {
-            modelBadge.textContent = `🟢 Ulangan: ${data.modelxonaGroupName || 'Modelxona'}`;
-            modelBadge.style.background = 'rgba(16,185,129,0.18)';
-            modelBadge.style.color = '#34d399';
-          } else {
-            modelBadge.textContent = '⚪ Ulanmagan';
-            modelBadge.style.background = 'rgba(255,255,255,0.08)';
-            modelBadge.style.color = 'var(--text-muted)';
           }
         }
 
@@ -685,9 +714,12 @@ const App = {
     } else if (groupType === 'constructor') {
       customId = document.getElementById('set-tg-constructor-group')?.value.trim();
       groupName = 'Konstruktorlar guruhi';
+    } else if (groupType === 'tikuv') {
+      customId = document.getElementById('set-tg-tikuv-group')?.value.trim();
+      groupName = 'Tikuv (Chevarlar) guruhi';
     } else {
       customId = document.getElementById('set-tg-modelxona-group')?.value.trim();
-      groupName = 'Modelxona guruhi';
+      groupName = 'Modelxona (Bichish) guruhi';
     }
 
     this.showToast(`⏳ ${groupName}ga interaktiv test vazifa yuborilmoqda...`);
@@ -731,6 +763,7 @@ const App = {
     const constGroupId = document.getElementById('set-tg-constructor-group')?.value.trim() || '';
     const kesimGroupId = document.getElementById('set-tg-kesim-group')?.value.trim() || '';
     const modelGroupId = document.getElementById('set-tg-modelxona-group')?.value.trim() || '';
+    const tikuvGroupId = document.getElementById('set-tg-tikuv-group')?.value.trim() || '';
 
     const apiKeyInput = document.getElementById('set-api-key');
     if (apiKeyInput) {
@@ -752,7 +785,8 @@ const App = {
           token: settings.telegramBotToken,
           constructorGroupId: constGroupId,
           kesimGroupId: kesimGroupId,
-          modelxonaGroupId: modelGroupId
+          modelxonaGroupId: modelGroupId,
+          tikuvGroupId: tikuvGroupId
         })
       });
     } catch(e){}

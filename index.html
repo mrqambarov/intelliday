@@ -793,7 +793,7 @@
             <!-- 1. Konstruktorlar guruhi -->
             <div class="tg-group-row" style="background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">📐 1. Konstruktorlar Guruhi (Andaza & Shogirdlar)</span>
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">📐 1. Konstruktorlar Guruhi (Lekalo, Andaza & Gradatsiya)</span>
                 <span id="tg-status-constructor" class="badge" style="background: rgba(99,102,241,0.2); color: var(--accent-indigo); font-size: 0.72rem;">Tekshirilmoqda</span>
               </div>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -803,14 +803,48 @@
                 </button>
               </div>
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                Andaza, lekalolar, gradatsiya va bichuv topshiriqlari avtomatik shu guruhga tushadi.
+                Andaza, lekalolar, gradatsiya va Bosh tekshiruv (Primera) topshiriqlari shu guruhga tushadi.
               </div>
             </div>
 
-            <!-- 2. Kesim (Kroy) guruhi -->
-            <div class="tg-group-row" style="background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
+            <!-- 2. Modelxona (Bichish) guruhi -->
+            <div class="tg-group-row" style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🏭 2. Katta Avtomat Kesimxona (Kroy sexi)</span>
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">✂️ 2. Modelxona (Bichish & Tayyorlov Guruhi)</span>
+                <span id="tg-status-modelxona" class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-size: 0.72rem;">Tekshirilmoqda</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="text" id="set-tg-modelxona-group" class="form-input" placeholder="Guruh ID (-100...)" style="font-size: 0.82rem; padding: 0.4rem 0.65rem;">
+                <button type="button" class="btn btn-secondary" onclick="App.testGroupMessage('modelxona')" style="font-size: 0.78rem; white-space: nowrap; padding: 0.4rem 0.75rem;">
+                  🧪 Test vazifa tashlash
+                </button>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                Lekalo tayyor bo‘lgach, namunaviy bichish & dublyaj (Nozima & Charos) shu guruhga kelib tushadi.
+              </div>
+            </div>
+
+            <!-- 3. Tikuv guruhi -->
+            <div class="tg-group-row" style="background: rgba(236,72,153,0.06); border: 1px solid rgba(236,72,153,0.25); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🧵 3. Tikuv Guruhi (Namuna Tikuvchi Chevarlar)</span>
+                <span id="tg-status-tikuv" class="badge" style="background: rgba(236,72,153,0.2); color: #f472b6; font-size: 0.72rem;">Tekshirilmoqda</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="text" id="set-tg-tikuv-group" class="form-input" placeholder="Guruh ID (-100...)" style="font-size: 0.82rem; padding: 0.4rem 0.65rem;">
+                <button type="button" class="btn btn-secondary" onclick="App.testGroupMessage('tikuv')" style="font-size: 0.78rem; white-space: nowrap; padding: 0.4rem 0.75rem;">
+                  🧪 Test vazifa tashlash
+                </button>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                Bichish yakunlangach, namuna tikish (Kamola Master, Adiba, Rayhona, Nigora) to‘g‘ridan-to‘g‘ri shu guruhga o‘tadi.
+              </div>
+            </div>
+
+            <!-- 4. Kesim (Kroy) guruhi -->
+            <div class="tg-group-row" style="background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius-sm); padding: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🏭 4. Katta Avtomat Kesimxona (Kroy sexi)</span>
                 <span id="tg-status-kesim" class="badge" style="background: rgba(245,158,11,0.2); color: #fbbf24; font-size: 0.72rem;">Tekshirilmoqda</span>
               </div>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -823,31 +857,14 @@
                 Katta obyomli avtomat kesimxona uchun qoliplarni shogirdlar (Oqilbek va Qobiljon) raskladka qilib berishadi.
               </div>
             </div>
-
-            <!-- 3. Modelxona guruhi -->
-            <div class="tg-group-row" style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-sm); padding: 0.75rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <span style="font-weight: 700; color: #fff; font-size: 0.88rem;">🪡 3. Modelxona Guruhi (Namunalar: Nozima, Charos & Chevarlar)</span>
-                <span id="tg-status-modelxona" class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-size: 0.72rem;">Tekshirilmoqda</span>
-              </div>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="text" id="set-tg-modelxona-group" class="form-input" placeholder="Guruh ID (-100...)" style="font-size: 0.82rem; padding: 0.4rem 0.65rem;">
-                <button type="button" class="btn btn-secondary" onclick="App.testGroupMessage('modelxona')" style="font-size: 0.78rem; white-space: nowrap; padding: 0.4rem 0.75rem;">
-                  🧪 Test vazifa tashlash
-                </button>
-              </div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                Dona-dona namuna bichish (Nozima & Charos) va etalon tikish (Kamola Master, Adiba, Rayhona, Nigora) shu yerda.
-              </div>
-            </div>
           </div>
 
           <!-- Quick Setup Guide -->
           <div style="background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.25); border-radius: var(--radius-sm); padding: 0.85rem; font-size: 0.8rem; line-height: 1.55; margin-bottom: 1.25rem;">
             <strong style="color: #fff;">💡 Guruhlarni ulash va Botdan plan joylash bo‘yicha qo‘llanma:</strong><br>
-            1. Botingizni guruhlarga (Konstruktorlar, Avtomat Kesimxona va Modelxona) <b>Admin</b> qilib qo‘shing.<br>
-            2. Kesimxona guruhida <code>/set_kesim</code>, Konstruktorlarda <code>/set_konstruktor</code>, Modelxonada <code>/set_modelxona</code> deb yozing.<br>
-            3. <b>Kesimxonaga kunlik plan berish</b> uchun botga: <code>/kesim ZAK-108 Palto 500 dona</code> yoki <code>/plan</code> deb yozing — bot vazifani shogirdlar (Oqilbek va Qobiljon)ga bo‘lib beradi va ularning kun tartibiga <b>«🚨 Juda zarur (Raskladka)»</b> qilib kiritadi!
+            1. Botingizni o‘z guruhlaringizga (Konstruktorlar, Modelxona, Tikuv, Kesimxona) <b>Admin</b> qilib qo‘shing.<br>
+            2. Har bir guruhda buyruq bering: Konstruktorlarda <code>/set_konstruktor</code>, Modelxonada (Bichishda) <code>/set_modelxona</code>, Tikuvda <code>/set_tikuv</code>, Kesimxonada <code>/set_kesim</code>.<br>
+            3. Har bir bosqich tugaganda <b>«✅ Tayyor bo‘ldi»</b> bosilishi bilan keyingi bosqich o‘zining guruhiga navbat bilan tushadi: <b>Lekalo (Konstruktorlar) ➔ Bichish (Modelxona) ➔ Tikuv (Chevarlar) ➔ Tekshiruv (Bosh konstruktor)</b>!
           </div>
 
           <!-- Kesimxona Zakazlarini Taqsimlash Qoidalari (Raskladka Sozlamalari) -->

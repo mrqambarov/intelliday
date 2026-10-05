@@ -30,8 +30,15 @@
       "telegramChatId": "",
       "pin": "1234",
       "password": "1234",
-      "currentStatus": "free",
-      "activeTask": null,
+      "currentStatus": "busy",
+      "activeTask": {
+        "orderId": "ord_1791112453186_0",
+        "orderNumber": "X5-95",
+        "stageId": "st_raskladka_1791112453585_0",
+        "stageName": "📐 Kesimxona Raskladkasi: X5-95 • 94-partiya",
+        "startedAt": "2026-10-04T11:14:58.934Z",
+        "estimatedHours": 5
+      },
       "active": true,
       "login": "oqilbek"
     },
@@ -47,8 +54,15 @@
       "telegramChatId": "",
       "pin": "1234",
       "password": "1234",
-      "currentStatus": "free",
-      "activeTask": null,
+      "currentStatus": "busy",
+      "activeTask": {
+        "orderId": "ord_1791112430569_0",
+        "orderNumber": "ZAK-592",
+        "stageId": "st_raskladka_1791112430569_0",
+        "stageName": "📐 Kesimxona Raskladkasi: 12-partiya",
+        "startedAt": "2026-10-04T11:16:02.204Z",
+        "estimatedHours": 4.3
+      },
       "active": true,
       "login": "qobiljon"
     },
@@ -156,6 +170,365 @@
     }
   ],
   "orders": [
+    {
+      "id": "ord_1791112453186_0",
+      "orderNumber": "X5-95",
+      "title": "X5-95 • 95-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 95-partiya, Vazn: 834 kg",
+      "models": [
+        {
+          "name": "X5-95 • 95-partiya",
+          "qty": 834
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 834,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112453186_0",
+          "name": "📐 Kesimxona Raskladkasi: X5-95 • 95-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_oqilbek",
+          "assignedName": "Oqilbek",
+          "assignedAvatar": "📐",
+          "estimatedHours": 5,
+          "effectiveHours": 5,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:14:13.186Z",
+          "endTime": "2026-10-04T16:14:13.186Z",
+          "status": "pending",
+          "priority": "urgent",
+          "notes": "Partiya: 95-partiya, Vazn: 834 kg (Katta avtomat kesimxona uchun raskladka)"
+        },
+        {
+          "id": "st_raskladka_1791112453585_0",
+          "name": "📐 Kesimxona Raskladkasi: X5-95 • 94-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_oqilbek",
+          "assignedName": "Oqilbek",
+          "assignedAvatar": "📐",
+          "estimatedHours": 5,
+          "effectiveHours": 5,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:14:13.585Z",
+          "endTime": "2026-10-04T16:14:13.585Z",
+          "status": "in_progress",
+          "priority": "urgent",
+          "notes": "Partiya: 94-partiya, Vazn: 831.7 kg (Katta avtomat kesimxona uchun raskladka)",
+          "startedAt": "2026-10-04T11:14:58.934Z"
+        }
+      ],
+      "calculatedETA": "2026-10-04T16:14:13.186Z",
+      "calculatedETAFormatted": "4-Okt, 21:14",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📐 Oqilbek qo‘lida (~5s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:14:13.186Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112452792_0",
+      "orderNumber": "ZAK-1610",
+      "title": "254-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 254-partiya, Vazn: 407.5 kg",
+      "models": [
+        {
+          "name": "254-partiya",
+          "qty": 408
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 408,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112452792_0",
+          "name": "📐 Kesimxona Raskladkasi: 254-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_oqilbek",
+          "assignedName": "Oqilbek",
+          "assignedAvatar": "📐",
+          "estimatedHours": 3.7,
+          "effectiveHours": 3.7,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:14:12.792Z",
+          "endTime": "2026-10-04T14:56:12.792Z",
+          "status": "pending",
+          "priority": "urgent",
+          "notes": "Partiya: 254-partiya, Vazn: 407.5 kg (Katta avtomat kesimxona uchun raskladka)"
+        }
+      ],
+      "calculatedETA": "2026-10-04T14:56:12.792Z",
+      "calculatedETAFormatted": "4-Okt, 19:56",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📐 Oqilbek qo‘lida (~3.7s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:14:12.792Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112452393_0",
+      "orderNumber": "ZAK-1609",
+      "title": "182-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 182-partiya, Vazn: 404.2 kg",
+      "models": [
+        {
+          "name": "182-partiya",
+          "qty": 404
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 404,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112452393_0",
+          "name": "📐 Kesimxona Raskladkasi: 182-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_oqilbek",
+          "assignedName": "Oqilbek",
+          "assignedAvatar": "📐",
+          "estimatedHours": 3.7,
+          "effectiveHours": 3.7,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:14:12.393Z",
+          "endTime": "2026-10-04T14:56:12.393Z",
+          "status": "pending",
+          "priority": "urgent",
+          "notes": "Partiya: 182-partiya, Vazn: 404.2 kg (Katta avtomat kesimxona uchun raskladka)"
+        }
+      ],
+      "calculatedETA": "2026-10-04T14:56:12.393Z",
+      "calculatedETAFormatted": "4-Okt, 19:56",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📐 Oqilbek qo‘lida (~3.7s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:14:12.393Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112444958_0",
+      "orderNumber": "DC-1608",
+      "title": "DC-1608 • 266-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 266-partiya, Vazn: 276.2 kg",
+      "models": [
+        {
+          "name": "DC-1608 • 266-partiya",
+          "qty": 276
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 276,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112444958_0",
+          "name": "📐 Kesimxona Raskladkasi: DC-1608 • 266-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_qobiljon",
+          "assignedName": "Qobiljon",
+          "assignedAvatar": "📏",
+          "estimatedHours": 2.8,
+          "effectiveHours": 2.8,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:14:04.958Z",
+          "endTime": "2026-10-04T14:02:04.958Z",
+          "status": "pending",
+          "priority": "urgent",
+          "notes": "Partiya: 266-partiya, Vazn: 276.2 kg (Katta avtomat kesimxona uchun raskladka)"
+        }
+      ],
+      "calculatedETA": "2026-10-04T14:02:04.958Z",
+      "calculatedETAFormatted": "4-Okt, 19:02",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📏 Qobiljon qo‘lida (~2.8s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:14:04.958Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112431778_0",
+      "orderNumber": "ZAK-1510",
+      "title": "4-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 4-partiya, Vazn: 634 kg",
+      "models": [
+        {
+          "name": "4-partiya",
+          "qty": 634
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 634,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112431778_0",
+          "name": "📐 Kesimxona Raskladkasi: 4-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_oqilbek",
+          "assignedName": "Oqilbek",
+          "assignedAvatar": "📐",
+          "estimatedHours": 5,
+          "effectiveHours": 5,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:13:51.778Z",
+          "endTime": "2026-10-04T16:13:51.778Z",
+          "status": "pending",
+          "priority": "urgent",
+          "notes": "Partiya: 4-partiya, Vazn: 634 kg (Katta avtomat kesimxona uchun raskladka)"
+        }
+      ],
+      "calculatedETA": "2026-10-04T16:13:51.778Z",
+      "calculatedETAFormatted": "4-Okt, 21:13",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📐 Oqilbek qo‘lida (~5s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:13:51.778Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112431387_0",
+      "orderNumber": "DC-1509",
+      "title": "DC-1509 • 11-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 11-partiya, Vazn: 515.5 kg",
+      "models": [
+        {
+          "name": "DC-1509 • 11-partiya",
+          "qty": 516
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 516,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112431387_0",
+          "name": "📐 Kesimxona Raskladkasi: DC-1509 • 11-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_qobiljon",
+          "assignedName": "Qobiljon",
+          "assignedAvatar": "📏",
+          "estimatedHours": 4.4,
+          "effectiveHours": 4.4,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:13:51.387Z",
+          "endTime": "2026-10-04T15:37:51.387Z",
+          "status": "in_progress",
+          "priority": "urgent",
+          "notes": "Partiya: 11-partiya, Vazn: 515.5 kg (Katta avtomat kesimxona uchun raskladka)",
+          "startedAt": "2026-10-04T11:15:40.533Z"
+        },
+        {
+          "id": "st_raskladka_1791112439540_0",
+          "name": "📐 Kesimxona Raskladkasi: DC-1509 • 234-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_qobiljon",
+          "assignedName": "Qobiljon",
+          "assignedAvatar": "📏",
+          "estimatedHours": 3.6,
+          "effectiveHours": 3.6,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:13:59.540Z",
+          "endTime": "2026-10-04T14:49:59.540Z",
+          "status": "in_progress",
+          "priority": "urgent",
+          "notes": "Partiya: 234-partiya, Vazn: 390.6 kg (Katta avtomat kesimxona uchun raskladka)",
+          "startedAt": "2026-10-04T11:15:19.639Z"
+        }
+      ],
+      "calculatedETA": "2026-10-04T15:37:51.387Z",
+      "calculatedETAFormatted": "4-Okt, 20:37",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📏 Qobiljon qo‘lida (~4.4s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:13:51.387Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112430986_0",
+      "orderNumber": "ZAK-593",
+      "title": "16-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 16-partiya, Vazn: 647.5 kg",
+      "models": [
+        {
+          "name": "16-partiya",
+          "qty": 648
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 648,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112430986_0",
+          "name": "📐 Kesimxona Raskladkasi: 16-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_qobiljon",
+          "assignedName": "Qobiljon",
+          "assignedAvatar": "📏",
+          "estimatedHours": 5,
+          "effectiveHours": 5,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:13:50.986Z",
+          "endTime": "2026-10-04T16:13:50.986Z",
+          "status": "in_progress",
+          "priority": "urgent",
+          "notes": "Partiya: 16-partiya, Vazn: 647.5 kg (Katta avtomat kesimxona uchun raskladka)",
+          "startedAt": "2026-10-04T11:15:49.235Z"
+        }
+      ],
+      "calculatedETA": "2026-10-04T16:13:50.986Z",
+      "calculatedETAFormatted": "4-Okt, 21:13",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📏 Qobiljon qo‘lida (~5s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:13:50.986Z",
+      "status": "in_progress"
+    },
+    {
+      "id": "ord_1791112430569_0",
+      "orderNumber": "ZAK-592",
+      "title": "12-partiya",
+      "clientOrDept": "Katta Avtomat Kesimxona (Kroy sexi)",
+      "priority": "urgent",
+      "notes": "Partiya: 12-partiya, Vazn: 494.5 kg",
+      "models": [
+        {
+          "name": "12-partiya",
+          "qty": 495
+        }
+      ],
+      "modelCount": 1,
+      "totalPieces": 495,
+      "stages": [
+        {
+          "id": "st_raskladka_1791112430569_0",
+          "name": "📐 Kesimxona Raskladkasi: 12-partiya",
+          "stageKey": "raskladka",
+          "role": "assistant_constructor",
+          "assignedTo": "tm_qobiljon",
+          "assignedName": "Qobiljon",
+          "assignedAvatar": "📏",
+          "estimatedHours": 4.3,
+          "effectiveHours": 4.3,
+          "unitHours": 0.01,
+          "startTime": "2026-10-04T11:13:50.569Z",
+          "endTime": "2026-10-04T15:31:50.569Z",
+          "status": "in_progress",
+          "priority": "urgent",
+          "notes": "Partiya: 12-partiya, Vazn: 494.5 kg (Katta avtomat kesimxona uchun raskladka)",
+          "startedAt": "2026-10-04T11:16:02.204Z"
+        }
+      ],
+      "calculatedETA": "2026-10-04T15:31:50.569Z",
+      "calculatedETAFormatted": "4-Okt, 20:31",
+      "explanation": "• <b>Kesimxona raskladkasi</b>: 📏 Qobiljon qo‘lida (~4.3s). 🚨 Juda zarur.",
+      "createdAt": "2026-10-04T11:13:50.570Z",
+      "status": "in_progress"
+    },
     {
       "id": "ord_1791108625567_0",
       "orderNumber": "X5-91",
@@ -424,13 +797,17 @@
     "constructorGroupName": "Konstruktorlar",
     "modelxonaGroupId": "-1004371833004",
     "modelxonaGroupName": "Modelxona",
+    "tikuvGroupId": "",
+    "tikuvGroupName": "Tikuv guruhi",
+    "kesimGroupId": "",
+    "kesimGroupName": "Kesim (Kroy) guruhi",
     "telegramBotToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0",
     "connectedGroups": [
       {
         "id": "-1003004877945",
         "title": "Konstruktorlar",
         "type": "supergroup",
-        "lastActive": 1791108668906
+        "lastActive": 1791112562204
       },
       {
         "id": "-1004371833004",
@@ -440,7 +817,7 @@
       }
     ]
   },
-  "updatedAt": 1791110480138,
+  "updatedAt": 1791112562204,
   "cuttingRules": [
     {
       "id": "rule_dc",
@@ -506,6 +883,86 @@
     "tm_oqilbek": {
       "tasks": [
         {
+          "id": "task_corp_st_raskladka_1791112453585_0",
+          "title": "📐 [X5-95] Raskladka: X5-95 • 94-partiya (831.7 kg)",
+          "orderId": "ord_1791112453186_0",
+          "orderNumber": "X5-95",
+          "stageId": "st_raskladka_1791112453585_0",
+          "time": "16:00",
+          "duration": 300,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 94-partiya, Vazn: 831.7 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112453186_0",
+          "title": "📐 [X5-95] Raskladka: X5-95 • 95-partiya (834 kg)",
+          "orderId": "ord_1791112453186_0",
+          "orderNumber": "X5-95",
+          "stageId": "st_raskladka_1791112453186_0",
+          "time": "16:00",
+          "duration": 300,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 95-partiya, Vazn: 834 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112452792_0",
+          "title": "📐 [ZAK-1610] Raskladka: 254-partiya (407.5 kg)",
+          "orderId": "ord_1791112452792_0",
+          "orderNumber": "ZAK-1610",
+          "stageId": "st_raskladka_1791112452792_0",
+          "time": "16:30",
+          "duration": 222,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 254-partiya, Vazn: 407.5 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112452393_0",
+          "title": "📐 [ZAK-1609] Raskladka: 182-partiya (404.2 kg)",
+          "orderId": "ord_1791112452393_0",
+          "orderNumber": "ZAK-1609",
+          "stageId": "st_raskladka_1791112452393_0",
+          "time": "16:00",
+          "duration": 222,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 182-partiya, Vazn: 404.2 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112431778_0",
+          "title": "📐 [ZAK-1510] Raskladka: 4-partiya (634 kg)",
+          "orderId": "ord_1791112431778_0",
+          "orderNumber": "ZAK-1510",
+          "stageId": "st_raskladka_1791112431778_0",
+          "time": "14:00",
+          "duration": 300,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 4-partiya, Vazn: 634 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
           "id": "task_corp_st_raskladka_1791108625567_0",
           "title": "📐 [X5-91] Raskladka: X5-91 • 15-partiya (904.2 kg)",
           "orderId": "ord_1791108625567_0",
@@ -537,6 +994,86 @@
     },
     "tm_qobiljon": {
       "tasks": [
+        {
+          "id": "task_corp_st_raskladka_1791112444958_0",
+          "title": "📐 [DC-1608] Raskladka: DC-1608 • 266-partiya (276.2 kg)",
+          "orderId": "ord_1791112444958_0",
+          "orderNumber": "DC-1608",
+          "stageId": "st_raskladka_1791112444958_0",
+          "time": "16:00",
+          "duration": 168,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 266-partiya, Vazn: 276.2 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112439540_0",
+          "title": "📐 [DC-1509] Raskladka: DC-1509 • 234-partiya (390.6 kg)",
+          "orderId": "ord_1791112431387_0",
+          "orderNumber": "DC-1509",
+          "stageId": "st_raskladka_1791112439540_0",
+          "time": "16:00",
+          "duration": 216,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 234-partiya, Vazn: 390.6 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112431387_0",
+          "title": "📐 [DC-1509] Raskladka: DC-1509 • 11-partiya (515.5 kg)",
+          "orderId": "ord_1791112431387_0",
+          "orderNumber": "DC-1509",
+          "stageId": "st_raskladka_1791112431387_0",
+          "time": "16:00",
+          "duration": 264,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 11-partiya, Vazn: 515.5 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112430986_0",
+          "title": "📐 [ZAK-593] Raskladka: 16-partiya (647.5 kg)",
+          "orderId": "ord_1791112430986_0",
+          "orderNumber": "ZAK-593",
+          "stageId": "st_raskladka_1791112430986_0",
+          "time": "13:00",
+          "duration": 300,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 16-partiya, Vazn: 647.5 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
+        {
+          "id": "task_corp_st_raskladka_1791112430569_0",
+          "title": "📐 [ZAK-592] Raskladka: 12-partiya (494.5 kg)",
+          "orderId": "ord_1791112430569_0",
+          "orderNumber": "ZAK-592",
+          "stageId": "st_raskladka_1791112430569_0",
+          "time": "09:00",
+          "duration": 258,
+          "category": "work",
+          "priority": "urgent",
+          "isUrgent": true,
+          "date": "2026-10-04",
+          "completed": false,
+          "notes": "Katta avtomatlashtirilgan kesimxona uchun qoliplarni mato kengligi bo‘yicha raskladka qilish. Partiya: 12-partiya, Vazn: 494.5 kg. Biriktirdi: 👑 Bosh Konstruktor (Abdulmuttolib orqali)",
+          "isCorporateStage": true
+        },
         {
           "id": "plan_tm_qobiljon_1",
           "title": "Ertalabki ish joyi va andazalarni tayyorlash",

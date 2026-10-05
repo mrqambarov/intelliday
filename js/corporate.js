@@ -28,6 +28,32 @@ const CorporateManager = {
   activeWorkerId: 'all', // 'all' (Chief view) or employee ID
   isCorporateMode: false,
 
+  getMemberEmoji(member) {
+    if (!member) return '👤';
+    const av = typeof member === 'string' ? member : (member.avatar || '');
+    if (!av || av.startsWith('data:') || av.startsWith('http://') || av.startsWith('https://') || av.startsWith('/') || av.length > 8) {
+      const role = (typeof member === 'object' ? member.role : '') || '';
+      const id = (typeof member === 'object' ? member.id : '') || '';
+      if (role === 'head_constructor') return '👑';
+      if (role === 'assistant_constructor') return id.includes('qobil') ? '📏' : '📐';
+      if (role === 'cutter') return '✂️';
+      if (role === 'sample_tailor') return '🪡';
+      return '👤';
+    }
+    return av;
+  },
+
+  renderAvatarHtml(member, extraClass = '', size = '') {
+    if (!member) return `<span class="${extraClass}">👤</span>`;
+    const av = typeof member === 'string' ? member : (member.avatar || '');
+    if (av && (av.startsWith('data:') || av.startsWith('http://') || av.startsWith('https://') || av.startsWith('/'))) {
+      const style = size ? `style="width:${size};height:${size};border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"` : '';
+      return `<img src="${av}" alt="${(typeof member === 'object' ? member.name : '') || 'Avatar'}" class="avatar-img-round ${extraClass}" ${style}>`;
+    }
+    const emoji = this.getMemberEmoji(member);
+    return `<span class="${extraClass}">${emoji}</span>`;
+  },
+
   init() {
     this.fetchData();
     this.bindTabEvents();
@@ -260,7 +286,7 @@ const CorporateManager = {
             <div class="stage-step-body">
               <span class="stage-step-name">${escapeHtml(st.name)}</span>
               <span class="stage-step-assigned">
-                ${emp ? `${emp.avatar} ${emp.name.split(' ')[0]}` : 'Noma’lum'} • ${st.estimatedHours}s${st.multiplier > 1 ? ` (${st.unitHours}s × ${st.multiplier})` : ''}
+                ${emp ? `${this.renderAvatarHtml(emp, 'stage-pill-avatar', '18px')} ${escapeHtml(emp.name.split(' ')[0])}` : 'Noma’lum'} • ${st.estimatedHours}s${st.multiplier > 1 ? ` (${st.unitHours}s × ${st.multiplier})` : ''}
               </span>
             </div>
             ${!isCompleted ? `
@@ -371,15 +397,180 @@ const CorporateManager = {
   // --------------------------------------------------------------------------
   // Smart Lead Time & Queue Bottleneck Calculator
   // --------------------------------------------------------------------------
+  getEmployeeOptions(filterRole, selectedId = '') {
+    const team = (this.data && this.data.teamMembers) || [];
+    const matches = team.filter(t => !filterRole || t.role === filterRole || t.role === 'head_constructor');
+    const list = matches.length ? matches : team;
+    return list.map(m => {
+      const isSel = selectedId ? m.id === selectedId : false;
+      return `<option value="${m.id}" ${isSel ? 'selected' : ''}>${this.getMemberEmoji(m)} ${m.name} (${m.roleTitle || m.role})</option>`;
+    }).join('');
+  },
+
+  stageRowHtml(index, data = {}) {
+    const name = data.name || (index === 1 ? 'Andaza & Gradatsiya (Lekalo)' : index === 2 ? 'Bichish & Dublyaj' : index === 3 ? 'Modelxonada Namuna Tikish' : 'Primera & Bosh Tekshiruv');
+    const role = data.role || (index === 1 ? 'assistant_constructor' : index === 2 ? 'cutter' : index === 3 ? 'sample_tailor' : 'head_constructor');
+    const basis = data.basis || (index === 2 || index === 3 ? 'piece' : 'model');
+    const hours = data.hours !== undefined ? data.hours : (index === 1 ? 4.0 : index === 2 ? 1.5 : index === 3 ? 6.0 : 1.0);
+    const assignedId = data.assignedTo || '';
+    const labelTitle = data.label || `${index}-bosqich`;
+    const stageKey = data.stageKey || (index === 1 ? 'pattern' : index === 2 ? 'cutting' : index === 3 ? 'sample_sewing' : 'fitting_qc');
+
+    return `
+      <div class="calc-stage-row" data-basis="${basis}" data-stage-key="${stageKey}">
+        <span class="calc-stage-step calc-st-idx">${index}</span>
+        <div class="form-group" style="flex: 2; margin-bottom: 0; min-width: 170px;">
+          <label class="form-label calc-st-label" style="font-size: 0.75rem;">${labelTitle}</label>
+          <input type="text" class="form-input calc-st-name" value="${name}" required oninput="CorporateManager.livePreviewETA()">
+        </div>
+        <div class="form-group" style="flex: 2; margin-bottom: 0; min-width: 170px;">
+          <label class="form-label" style="font-size: 0.75rem;">Mas’ul Xodim</label>
+          <select class="form-select calc-st-emp" onchange="CorporateManager.livePreviewETA()">
+            ${this.getEmployeeOptions(role, assignedId)}
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1; margin-bottom: 0; min-width: 115px;">
+          <label class="form-label calc-st-unit-label" style="font-size: 0.75rem;">1 ${basis === 'piece' ? 'dona' : 'model'} (soat)</label>
+          <input type="number" class="form-input calc-st-hours" value="${hours}" step="0.5" min="0.1" max="100" oninput="CorporateManager.livePreviewETA()">
+          <span class="calc-st-total"></span>
+        </div>
+        <button type="button" class="calc-stage-remove" title="Ushbu bosqichni o‘chirib tashlash" onclick="CorporateManager.removeStageRow(this)">
+          🗑️
+        </button>
+      </div>
+    `;
+  },
+
+  removeStageRow(btn) {
+    const list = document.getElementById('calc-stages-list');
+    if (!list) return;
+    const rows = list.querySelectorAll('.calc-stage-row');
+    if (rows.length <= 1) {
+      if (window.App) window.App.showToast('⚠️ Kamida 1 ta ish bosqichi qolishi kerak!');
+      return;
+    }
+    const row = btn.closest('.calc-stage-row');
+    if (row) {
+      row.remove();
+      this.renumberStageRows();
+      this.livePreviewETA();
+      if (window.App) window.App.showToast('🗑️ Bosqich olib tashlandi');
+    }
+  },
+
+  renumberStageRows() {
+    const list = document.getElementById('calc-stages-list');
+    if (!list) return;
+    const rows = list.querySelectorAll('.calc-stage-row');
+    rows.forEach((row, i) => {
+      const idx = i + 1;
+      const stepEl = row.querySelector('.calc-st-idx');
+      if (stepEl) stepEl.textContent = idx;
+      const labelEl = row.querySelector('.calc-st-label');
+      if (labelEl) {
+        labelEl.textContent = `${idx}-bosqich`;
+      }
+      const removeBtn = row.querySelector('.calc-stage-remove');
+      if (removeBtn) {
+        removeBtn.disabled = rows.length <= 1;
+      }
+    });
+    this.updateActivePresetChip();
+  },
+
+  addCustomStageRow() {
+    const list = document.getElementById('calc-stages-list');
+    if (!list) return;
+    const count = list.querySelectorAll('.calc-stage-row').length;
+    const newHtml = this.stageRowHtml(count + 1, {
+      name: `Qo‘shimcha bosqich #${count + 1}`,
+      role: 'cutter',
+      basis: 'piece',
+      hours: 1.0,
+      stageKey: 'custom',
+      label: `${count + 1}-bosqich`
+    });
+    list.insertAdjacentHTML('beforeend', newHtml);
+    this.renumberStageRows();
+    const rows = list.querySelectorAll('.calc-stage-row');
+    rows[rows.length - 1].querySelector('.calc-st-name')?.focus();
+    this.livePreviewETA();
+    if (window.App) window.App.showToast('➕ Yangi bosqich qo‘shildi');
+  },
+
+  applyStagePreset(presetType) {
+    const list = document.getElementById('calc-stages-list');
+    if (!list) return;
+
+    let stagesConfig = [];
+    if (presetType === 'ready_pattern') {
+      // Lekalosi tayyor! -> Bichish, Tikuv, Primera
+      stagesConfig = [
+        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', hours: 1.5, stageKey: 'cutting', label: '1-bosqich: Bichish & Tayyorlov' },
+        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', hours: 6.0, stageKey: 'sample_sewing', label: '2-bosqich: Namuna Tikish' },
+        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', hours: 1.0, stageKey: 'fitting_qc', label: '3-bosqich: Tekshiruv' }
+      ];
+    } else if (presetType === 'ready_cut') {
+      // Tayyor bichilgan! -> Tikuv, Primera
+      stagesConfig = [
+        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', hours: 6.0, stageKey: 'sample_sewing', label: '1-bosqich: Namuna Tikish' },
+        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', hours: 1.0, stageKey: 'fitting_qc', label: '2-bosqich: Tekshiruv' }
+      ];
+    } else if (presetType === 'pattern_cut') {
+      // Faqat Lekalo & Bichish
+      stagesConfig = [
+        { name: 'Andaza & Gradatsiya (Lekalo)', role: 'assistant_constructor', basis: 'model', hours: 4.0, stageKey: 'pattern', label: '1-bosqich: Andaza (Lekalo)' },
+        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', hours: 1.5, stageKey: 'cutting', label: '2-bosqich: Bichish & Tayyorlov' }
+      ];
+    } else {
+      // Full: 4 bosqich
+      stagesConfig = [
+        { name: 'Andaza & Gradatsiya (Lekalo)', role: 'assistant_constructor', basis: 'model', hours: 4.0, stageKey: 'pattern', label: '1-bosqich: Andaza (Lekalo)' },
+        { name: 'Bichish & Dublyaj', role: 'cutter', basis: 'piece', hours: 1.5, stageKey: 'cutting', label: '2-bosqich: Bichish & Tayyorlov' },
+        { name: 'Modelxonada Namuna Tikish', role: 'sample_tailor', basis: 'piece', hours: 6.0, stageKey: 'sample_sewing', label: '3-bosqich: Namuna Tikish' },
+        { name: 'Primera & Bosh Tekshiruv', role: 'head_constructor', basis: 'model', hours: 1.0, stageKey: 'fitting_qc', label: '4-bosqich: Primera & Tekshiruv' }
+      ];
+    }
+
+    list.innerHTML = stagesConfig.map((cfg, i) => this.stageRowHtml(i + 1, cfg)).join('');
+    this.renumberStageRows();
+    this.livePreviewETA();
+
+    document.querySelectorAll('.calc-stage-presets .chip-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.preset === presetType);
+    });
+
+    if (window.App) {
+      const msg = presetType === 'ready_pattern' ? '✂️ "Lekalosi tayyor (Bichishdan boshlash)" tanlandi' :
+                  presetType === 'ready_cut' ? '🧵 "Tayyor bichilgan (Tikuvdan boshlash)" tanlandi' :
+                  presetType === 'pattern_cut' ? '📐 "Faqat Lekalo & Bichish" tanlandi' :
+                  '⚡ Standart 4 bosqich tiklandi';
+      window.App.showToast(msg);
+    }
+  },
+
+  updateActivePresetChip() {
+    const list = document.getElementById('calc-stages-list');
+    if (!list) return;
+    const rows = list.querySelectorAll('.calc-stage-row');
+    const names = Array.from(rows).map(r => (r.querySelector('.calc-st-name')?.value || '').toLowerCase());
+
+    const hasLekalo = names.some(n => /andaza|lekalo|gradatsiya/.test(n));
+    const hasBichish = names.some(n => /bich|kesim|dublyaj/.test(n));
+    const hasTikuv = names.some(n => /tikish|tikuv|namuna/.test(n));
+
+    let detected = 'custom';
+    if (hasLekalo && hasBichish && hasTikuv && rows.length === 4) detected = 'full';
+    else if (!hasLekalo && hasBichish && hasTikuv && rows.length === 3) detected = 'ready_pattern';
+    else if (!hasLekalo && !hasBichish && hasTikuv && rows.length === 2) detected = 'ready_cut';
+    else if (hasLekalo && hasBichish && !hasTikuv && rows.length === 2) detected = 'pattern_cut';
+
+    document.querySelectorAll('.calc-stage-presets .chip-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.preset === detected);
+    });
+  },
+
   initCalculatorForm() {
-    const team = this.data.teamMembers || [];
-
-    // Helper to generate employee select options by role
-    const getOptions = (filterRole) => {
-      const matches = team.filter(t => !filterRole || t.role === filterRole || t.role === 'head_constructor');
-      return matches.map(m => `<option value="${m.id}">${m.avatar} ${m.name} (${m.roleTitle})</option>`).join('');
-    };
-
     const container = document.getElementById('corp-calculator-content');
     if (!container) return;
 
@@ -437,91 +628,40 @@ const CorporateManager = {
           </div>
 
           <!-- Dynamic Stages Setup -->
-          <h4 style="margin: 1.25rem 0 0.75rem; color: var(--accent-cyan); display: flex; align-items: center; justify-content: space-between;">
-            <span>Ish Bosqichlari va Biriktirilgan Xodimlar:</span>
+          <div style="margin: 1.25rem 0 0.5rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+            <h4 style="margin: 0; color: var(--accent-cyan);">
+              Ish Bosqichlari va Biriktirilgan Xodimlar:
+            </h4>
             <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Vaqt 1 model / 1 dona uchun kiritiladi</span>
-          </h4>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="calc-stage-presets" id="calc-stage-presets">
+            <button type="button" class="chip-btn active" data-preset="full" onclick="CorporateManager.applyStagePreset('full')">
+              ⚡ To‘liq sikl (4 bosqich)
+            </button>
+            <button type="button" class="chip-btn" data-preset="ready_pattern" onclick="CorporateManager.applyStagePreset('ready_pattern')" title="Andazasi tayyor, to‘g‘ridan-to‘g‘ri bichishdan boshlanadi">
+              ✂️ Lekalosi tayyor (Bichishdan)
+            </button>
+            <button type="button" class="chip-btn" data-preset="ready_cut" onclick="CorporateManager.applyStagePreset('ready_cut')" title="Mato bichib bo‘lingan, to‘g‘ridan-to‘g‘ri tikuvga o‘tadi">
+              🧵 Tayyor bichilgan (Tikuvdan)
+            </button>
+            <button type="button" class="chip-btn" data-preset="pattern_cut" onclick="CorporateManager.applyStagePreset('pattern_cut')" title="Faqat andaza va bichish">
+              📐 Faqat Lekalo & Bichish
+            </button>
+          </div>
 
           <div class="calc-stages-box" id="calc-stages-list">
-            <!-- Stage 1: Lekalo -->
-            <div class="calc-stage-row" data-basis="model">
-              <span class="calc-stage-step">1</span>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">1-bosqich: Andaza (Lekalo)</label>
-                <input type="text" class="form-input calc-st-name" value="Andaza & Gradatsiya (Lekalo)" required>
-              </div>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Mas’ul Konstruktor</label>
-                <select class="form-select calc-st-emp">
-                  ${getOptions('assistant_constructor')}
-                </select>
-              </div>
-              <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">1 model uchun (soat)</label>
-                <input type="number" class="form-input calc-st-hours" value="4.0" step="0.5" min="0.5" max="40" oninput="CorporateManager.livePreviewETA()">
-                <span class="calc-st-total"></span>
-              </div>
-            </div>
+            <!-- Dynamically populated via applyStagePreset -->
+          </div>
 
-            <!-- Stage 2: Bichish -->
-            <div class="calc-stage-row" data-basis="piece">
-              <span class="calc-stage-step">2</span>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">2-bosqich: Bichish & Tayyorlov</label>
-                <input type="text" class="form-input calc-st-name" value="Bichish & Dublyaj" required>
-              </div>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Mas’ul Bichuvchi</label>
-                <select class="form-select calc-st-emp">
-                  ${getOptions('cutter')}
-                </select>
-              </div>
-              <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">1 dona uchun (soat)</label>
-                <input type="number" class="form-input calc-st-hours" value="1.5" step="0.5" min="0.5" max="40" oninput="CorporateManager.livePreviewETA()">
-                <span class="calc-st-total"></span>
-              </div>
-            </div>
-
-            <!-- Stage 3: Namuna tikish -->
-            <div class="calc-stage-row" data-basis="piece">
-              <span class="calc-stage-step">3</span>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">3-bosqich: Namuna Tikish</label>
-                <input type="text" class="form-input calc-st-name" value="Modelxonada Namuna Tikish" required>
-              </div>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Modelxona Chevari</label>
-                <select class="form-select calc-st-emp">
-                  ${getOptions('sample_tailor')}
-                </select>
-              </div>
-              <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">1 dona uchun (soat)</label>
-                <input type="number" class="form-input calc-st-hours" value="6.0" step="0.5" min="0.5" max="80" oninput="CorporateManager.livePreviewETA()">
-                <span class="calc-st-total"></span>
-              </div>
-            </div>
-
-            <!-- Stage 4: Primera -->
-            <div class="calc-stage-row" data-basis="model">
-              <span class="calc-stage-step">4</span>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">4-bosqich: Primera & Bosh Tekshiruv</label>
-                <input type="text" class="form-input calc-st-name" value="Primera & Bosh Tekshiruv" required>
-              </div>
-              <div class="form-group" style="flex: 2; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">Tekshiruvchi (Bosh Konstruktor)</label>
-                <select class="form-select calc-st-emp">
-                  ${getOptions('head_constructor')}
-                </select>
-              </div>
-              <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.75rem;">1 model uchun (soat)</label>
-                <input type="number" class="form-input calc-st-hours" value="1.0" step="0.5" min="0.5" max="10" oninput="CorporateManager.livePreviewETA()">
-                <span class="calc-st-total"></span>
-              </div>
-            </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="calc-add-model-btn" onclick="CorporateManager.addCustomStageRow()" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+              ➕ Bosqich qo‘shish
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="CorporateManager.applyStagePreset('full')" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+              🔄 Standart 4 bosqichni tiklash
+            </button>
           </div>
 
           <div class="form-group" style="margin-top: 1rem;">
@@ -553,6 +693,7 @@ const CorporateManager = {
       </div>
     `;
 
+    this.applyStagePreset('full');
     this.livePreviewETA();
   },
 
@@ -631,9 +772,19 @@ const CorporateManager = {
         totalEl.textContent = `× ${multiplier} ${qtyBasis === 'piece' ? 'dona' : 'model'} = ${hours} soat`;
       }
 
+      let stageKey = row.dataset.stageKey || '';
+      if (!stageKey || stageKey === 'custom') {
+        const lower = name.toLowerCase();
+        if (/andaza|lekalo|gradatsiya|chizma/.test(lower)) stageKey = 'pattern';
+        else if (/bich|kesim|kroy|dublyaj/.test(lower)) stageKey = 'cutting';
+        else if (/tikish|tikuv|chevar|namuna/.test(lower)) stageKey = 'sample_sewing';
+        else if (/primer|tekshir|qc/.test(lower)) stageKey = 'fitting_qc';
+      }
+
       stages.push({
         id: `st_new_${i + 1}`,
         name,
+        stageKey,
         assignedTo,
         unitHours,
         qtyBasis,
@@ -782,7 +933,7 @@ const CorporateManager = {
       html += `
         <div class="glass-card corp-member-card">
           <div class="corp-member-header">
-            <div class="corp-member-avatar">${tm.avatar || '👤'}</div>
+            <div class="corp-member-avatar">${this.renderAvatarHtml(tm)}</div>
             <div style="flex: 1;">
               <h3 style="margin: 0; font-size: 1.05rem; color: #fff;">${escapeHtml(tm.name)}</h3>
               <span style="font-size: 0.78rem; color: var(--accent-cyan); font-weight: 600;">${escapeHtml(tm.roleTitle || tm.role)}</span>
@@ -863,7 +1014,7 @@ const CorporateManager = {
           <option value="all">👑 Bosh Konstruktor (Barcha xodimlarni kuzatish)</option>
           ${team.filter(t => t.id !== 'tm_boss').map(t => `
             <option value="${t.id}" ${this.activeWorkerId === t.id ? 'selected' : ''}>
-              ${t.avatar} ${t.name} — ${t.roleTitle}
+              ${this.getMemberEmoji(t)} ${t.name} — ${t.roleTitle}
             </option>
           `).join('')}
         </select>

@@ -69,6 +69,32 @@ const AuthManager = {
     }
   },
 
+  getSafeEmoji(userOrAvatar) {
+    if (!userOrAvatar) return '👤';
+    const av = typeof userOrAvatar === 'object' ? (userOrAvatar.avatar || '') : (userOrAvatar || '');
+    if (!av || av.startsWith('data:') || av.startsWith('http://') || av.startsWith('https://') || av.startsWith('/') || av.length > 8) {
+      const role = (typeof userOrAvatar === 'object' ? userOrAvatar.role : '') || '';
+      const id = (typeof userOrAvatar === 'object' ? userOrAvatar.id : '') || '';
+      if (role === 'head_constructor') return '👑';
+      if (role === 'assistant_constructor') return id.includes('qobil') ? '📏' : '📐';
+      if (role === 'cutter') return '✂️';
+      if (role === 'sample_tailor') return '🪡';
+      return '👤';
+    }
+    return av;
+  },
+
+  renderAvatarHtml(userOrAvatar, extraClass = '', size = '') {
+    if (!userOrAvatar) return `<span class="${extraClass}">👤</span>`;
+    const av = typeof userOrAvatar === 'object' ? (userOrAvatar.avatar || '') : (userOrAvatar || '');
+    if (av && (av.startsWith('data:') || av.startsWith('http://') || av.startsWith('https://') || av.startsWith('/'))) {
+      const style = size ? `style="width:${size};height:${size};border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"` : '';
+      return `<img src="${av}" alt="Avatar" class="avatar-img-round ${extraClass}" ${style}>`;
+    }
+    const emoji = this.getSafeEmoji(userOrAvatar);
+    return `<span class="${extraClass}">${emoji}</span>`;
+  },
+
   async fetchUsers() {
     try {
       const res = await fetch('/api/auth/users');
@@ -214,7 +240,7 @@ const AuthManager = {
       html += `
         <div class="login-current-session">
           <div class="login-current-user">
-            <span class="login-current-avatar">${this.currentUser.avatar || '👤'}</span>
+            <span class="login-current-avatar">${this.renderAvatarHtml(this.currentUser)}</span>
             <div>
               <div class="login-current-label">Hozirgi profil</div>
               <strong>${escapeHtml(cleanCurName)}</strong>
@@ -542,7 +568,7 @@ const AuthManager = {
     let html = `
       <div class="worker-workspace-header glass-card">
         <div class="worker-welcome-meta">
-          <div class="worker-big-avatar">${this.currentUser.avatar || '👤'}</div>
+          <div class="worker-big-avatar">${this.renderAvatarHtml(this.currentUser)}</div>
           <div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <h2 style="margin: 0; font-size: 1.35rem; color: #fff;">${escapeHtml(this.currentUser.name)}</h2>
