@@ -132,6 +132,100 @@ function saveCorporateDB() {
 const telegramAuthCodes = new Map();
 let cachedBotUsername = '';
 
+// --- Active User Sessions & Token Security ---
+corporateDb.sessions = corporateDb.sessions || {};
+
+function createSession(userId, rememberMe = false, req = null) {
+  const token = 'tok_' + crypto.randomBytes(24).toString('hex');
+  const now = Date.now();
+  // 7 days if rememberMe, else 24 hours
+  const ttl = rememberMe ? 7 * 24 * 3600 * 1000 : 24 * 3600 * 1000;
+  const expiresAt = now + ttl;
+  const userAgent = req && req.headers ? (req.headers['user-agent'] || '') : '';
+  const ip = req && req.headers ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '') : '';
+
+  const sess = {
+    userId,
+    token,
+    createdAt: now,
+    lastActiveAt: now,
+    expiresAt,
+    rememberMe: !!rememberMe,
+    userAgent: String(userAgent).slice(0, 150),
+    ip: String(ip).slice(0, 50)
+  };
+  corporateDb.sessions[token] = sess;
+  saveCorporateDB();
+  return sess;
+}
+
+function getSession(token) {
+  if (!token || !corporateDb.sessions) return null;
+  const sess = corporateDb.sessions[token];
+  if (!sess) return null;
+  if (sess.expiresAt <= Date.now()) {
+    delete corporateDb.sessions[token];
+    saveCorporateDB();
+    return null;
+  }
+  return sess;
+}
+
+function touchSession(token) {
+  const sess = getSession(token);
+  if (!sess) return null;
+  const now = Date.now();
+  sess.lastActiveAt = now;
+  // If active, keep sliding expiration forward up to TTL from now
+  const baseTtl = sess.rememberMe ? 7 * 24 * 3600 * 1000 : 24 * 3600 * 1000;
+  sess.expiresAt = Math.max(sess.expiresAt, now + baseTtl);
+  saveCorporateDB();
+  return sess;
+}
+
+function destroySession(token) {
+  if (token && corporateDb.sessions && corporateDb.sessions[token]) {
+    delete corporateDb.sessions[token];
+    saveCorporateDB();
+  }
+}
+
+// Background cleanup of expired sessions and auth codes
+setInterval(() => {
+  const now = Date.now();
+  let changed = false;
+  if (corporateDb.sessions) {
+    for (const tok in corporateDb.sessions) {
+      if (corporateDb.sessions[tok].expiresAt <= now) {
+        delete corporateDb.sessions[tok];
+        changed = true;
+      }
+    }
+  }
+  for (const [code, entry] of telegramAuthCodes.entries()) {
+    if (entry.expiresAt <= now) {
+      telegramAuthCodes.delete(code);
+    }
+  }
+  if (changed) saveCorporateDB();
+}, 5 * 60 * 1000);
+
+async function notifyLoginToTelegram(user, method = 'Parol') {
+  try {
+    const token = (db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+    if (!token || !user || !user.telegramChatId) return;
+    const timeStr = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const dateStr = new Date().toLocaleDateString('uz-UZ');
+    await sendTelegramMessage(token, user.telegramChatId,
+      `🔐 <b>IntelliDay — Tizimga yangi seans ochildi</b>\n\n` +
+      `Hurmatli <b>${escapeHtml(user.name)}</b>, profilingizga muvaffaqiyatli kirildi.\n` +
+      `🔑 <b>Kirish usuli:</b> ${escapeHtml(method)}\n` +
+      `⏰ <b>Vaqt:</b> ${dateStr}, ${timeStr}\n` +
+      `🛡️ <i>Xavfsizlik: Agar bu siz bo‘lmasangiz, darhol parolingizni o‘zgartiring.</i>`
+    );
+  } catch (e) {}
+}
+
 // --- Passwords (scrypt hash; legacy plain `pin` still accepted until replaced) ---
 const SECRET_USER_FIELDS = ['pin', 'password', 'passwordHash'];
 
@@ -2282,23 +2376,27 @@ const server = http.createServer((req, res) => {
     }
     const user = corporateDb.teamMembers.find(t => t.id === entry.userId);
     telegramAuthCodes.delete(code);
+    const session = createSession(user.id, true, req);
+    notifyLoginToTelegram(user, 'Telegram 1-klik tasdiqlash');
     res.end(JSON.stringify({
       success: true,
       status: 'ok',
       user: sanitizeUser(user),
-      token: 'tok_' + Date.now() + '_' + user.id
+      token: session.token,
+      expiresAt: session.expiresAt
     }));
     return;
   }
 
-  // --- API: User Login (PIN or Telegram Code or Quick Switch) ---
+  // --- API: User Login (PIN, Password, or Telegram Code) ---
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     let body = '';
     req.on('data', c => body += c);
     req.on('end', () => {
       try {
-        const { userId, pin, code, login, password } = JSON.parse(body || '{}');
+        const { userId, pin, code, login, password, rememberMe } = JSON.parse(body || '{}');
         let matchedUser = null;
+        let loginMethod = 'Parol';
 
         if (code) {
           const cleanCode = String(code).trim();
@@ -2306,6 +2404,7 @@ const server = http.createServer((req, res) => {
           if (authEntry && authEntry.expiresAt > Date.now() && authEntry.userId) {
             matchedUser = corporateDb.teamMembers.find(t => t.id === authEntry.userId);
             telegramAuthCodes.delete(cleanCode);
+            loginMethod = 'Telegram bir martalik kod';
           }
         } else if (login) {
           // Login (username / telegram username / phone) + password (PIN)
@@ -2322,11 +2421,13 @@ const server = http.createServer((req, res) => {
           }
           if (candidate && candidate.active !== false && verifyPassword(candidate, password)) {
             matchedUser = candidate;
+            loginMethod = 'Login va parol';
           }
         } else if (userId) {
           const candidate = corporateDb.teamMembers.find(t => t.id === userId);
           if (candidate && verifyPassword(candidate, pin || password)) {
             matchedUser = candidate;
+            loginMethod = 'PIN / Parol';
           }
         }
 
@@ -2336,17 +2437,81 @@ const server = http.createServer((req, res) => {
           return;
         }
 
-        const token = 'tok_' + Date.now() + '_' + matchedUser.id;
+        const session = createSession(matchedUser.id, !!rememberMe, req);
+        notifyLoginToTelegram(matchedUser, loginMethod);
+
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({
           success: true,
           user: sanitizeUser(matchedUser),
-          token
+          token: session.token,
+          expiresAt: session.expiresAt,
+          rememberMe: session.rememberMe
         }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: e.message }));
       }
+    });
+    return;
+  }
+
+  // --- API: Validate Session (Heartbeat & Startup) ---
+  if (pathname === '/api/auth/session' && req.method === 'GET') {
+    const authHeader = req.headers['authorization'] || '';
+    const token = (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (reqUrl.searchParams.get('token') || '')).trim();
+    const session = getSession(token);
+    if (!session) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Sessiya muddati tugagan yoki mavjud emas' }));
+      return;
+    }
+    const user = corporateDb.teamMembers.find(t => t.id === session.userId);
+    if (!user || user.active === false) {
+      destroySession(token);
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Foydalanuvchi faol emas' }));
+      return;
+    }
+    touchSession(token);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      user: sanitizeUser(user),
+      expiresAt: session.expiresAt,
+      rememberMe: session.rememberMe
+    }));
+    return;
+  }
+
+  // --- API: Session Refresh ---
+  if (pathname === '/api/auth/refresh' && req.method === 'POST') {
+    const authHeader = req.headers['authorization'] || '';
+    const token = (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (reqUrl.searchParams.get('token') || '')).trim();
+    const session = touchSession(token);
+    if (!session) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Sessiya topilmadi' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true, expiresAt: session.expiresAt }));
+    return;
+  }
+
+  // --- API: Logout ---
+  if (pathname === '/api/auth/logout' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { token } = JSON.parse(body || '{}');
+        const authHeader = req.headers['authorization'] || '';
+        const tok = token || (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '');
+        if (tok) destroySession(tok);
+      } catch (e) {}
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, message: 'Sessiya tozalandi' }));
     });
     return;
   }

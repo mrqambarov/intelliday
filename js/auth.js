@@ -10,19 +10,26 @@
 const AuthManager = {
   currentUser: null,
   usersList: [],
+  sessionToken: null,
+  sessionExpiresAt: null,
+  heartbeatTimer: null,
   activeTab: 'login', // 'login' | 'telegram'
   tgPollTimer: null,
   tgPollCode: null,
+  tgCountdownTimer: null,
+  pendingAlertMsg: '',
   isSwitchMode: false,
 
   async init() {
+    this.bindNavigationGuards();
+
     const urlParams = new URLSearchParams(window.location.search);
 
     // ?reset=1 / ?logout=1 -> sessiyani tozalash
     if (urlParams.get('reset_session') || urlParams.get('logout') || urlParams.get('reset')) {
-      this.clearSession();
+      await this.clearSession();
       window.history.replaceState({}, document.title, window.location.pathname);
-      this.showLoginScreen(false);
+      this.showLoginScreen(false, '👋 Tizimdan chiqildi');
       return;
     }
 
@@ -31,24 +38,47 @@ const AuthManager = {
     if (authCode) {
       window.history.replaceState({}, document.title, window.location.pathname);
       const ok = await this.loginWithCode(authCode);
-      if (!ok) this.showLoginScreen(false);
+      if (!ok) this.showLoginScreen(false, 'Telegram kirish kodi noto‘g‘ri yoki eskirgan');
       return;
     }
 
-    // Saqlangan sessiya
-    const saved = localStorage.getItem('intelliday_auth_user_v1');
-    const sessionActive = sessionStorage.getItem('intelliday_session_started');
-    if (saved) {
-      try { this.currentUser = JSON.parse(saved); } catch (e) { this.currentUser = null; }
-    }
-
-    if (this.currentUser && sessionActive) {
-      this.hideLoginScreen();
-    } else {
+    // Saqlangan sessiya tokeni
+    const token = localStorage.getItem('intelliday_auth_token_v1');
+    if (!token) {
+      this.clearSession(false);
       this.showLoginScreen(false);
+      return;
     }
 
-    // Real-vaqt holat yangilanishi
+    // Serverda sessiyani tekshirish
+    try {
+      const res = await fetch('/api/auth/session', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          this.currentUser = data.user;
+          this.sessionToken = token;
+          this.sessionExpiresAt = data.expiresAt;
+          localStorage.setItem('intelliday_auth_user_v1', JSON.stringify(data.user));
+          sessionStorage.setItem('intelliday_session_started', 'true');
+          this.hideLoginScreen();
+          this.startHeartbeat();
+          this.setupSseListener();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[AUTH] Sessiyani serverda tekshirishda xatolik:', e);
+    }
+
+    // Sessiya yaroqsiz yoki tugagan bo'lsa
+    await this.clearSession(false);
+    this.showLoginScreen(false, 'Sessiyangiz muddati tugadi. Xavfsizlik uchun qaytadan kiring.');
+  },
+
+  setupSseListener() {
     if (window.Storage && window.Storage.sseSource) {
       window.Storage.sseSource.addEventListener('corporate_sync', (e) => {
         try {
@@ -67,6 +97,19 @@ const AuthManager = {
         } catch (err) {}
       });
     }
+  },
+
+  bindNavigationGuards() {
+    window.addEventListener('popstate', () => {
+      if (!this.currentUser) {
+        this.showLoginScreen(false);
+      }
+    });
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted && !this.currentUser) {
+        this.showLoginScreen(false);
+      }
+    });
   },
 
   getSafeEmoji(userOrAvatar) {
@@ -184,7 +227,11 @@ const AuthManager = {
   // --------------------------------------------------------------------------
   // Butun ekranli login sahifasi
   // --------------------------------------------------------------------------
-  showLoginScreen(isSwitchMode = false) {
+  // --------------------------------------------------------------------------
+  // Butun ekranli login sahifasi (Xavfsiz, hech qanday aylanma qaytishsiz)
+  // --------------------------------------------------------------------------
+  showLoginScreen(isSwitchMode = false, customError = '') {
+    this.pendingAlertMsg = customError || '';
     const screen = document.getElementById('login-screen');
     const app = document.getElementById('app');
     this.isSwitchMode = isSwitchMode && !!this.currentUser;
@@ -195,7 +242,7 @@ const AuthManager = {
     }
     if (app) app.style.display = 'none';
 
-    this.renderLoginScreen();
+    this.renderLoginScreen(customError);
   },
 
   hideLoginScreen() {
@@ -217,8 +264,16 @@ const AuthManager = {
     }
   },
 
-  // Eski chaqiruvlar bilan moslik
-  openLoginModal() { this.showLoginScreen(true); },
+  // Profil almashtirish — seansni tozalab yangi login talab qiladi
+  switchAccount() {
+    this.clearSession(true);
+    this.renderHeaderProfile();
+    this.activeTab = 'login';
+    window.history.replaceState(null, document.title, window.location.pathname);
+    this.showLoginScreen(false, 'Boshqa profil bilan kirish uchun login va parolingizni kiriting');
+  },
+
+  openLoginModal() { this.switchAccount(); },
   closeLoginModal() { if (this.currentUser) this.hideLoginScreen(); },
   renderModalContent() { this.renderLoginScreen(); },
 
@@ -228,36 +283,17 @@ const AuthManager = {
     this.renderLoginScreen();
   },
 
-  renderLoginScreen() {
+  renderLoginScreen(initialError = '') {
     const container = document.getElementById('login-screen-content');
     if (!container) return;
 
-    let html = '';
+    const errMsg = initialError || this.pendingAlertMsg || '';
+    this.pendingAlertMsg = '';
 
-    // Allaqachon kirgan foydalanuvchi profil tugmasini bosgan bo‘lsa
-    if (this.currentUser) {
-      const cleanCurName = (this.currentUser.name || '').replace(/\(Siz\)/i, '').trim();
-      html += `
-        <div class="login-current-session">
-          <div class="login-current-user">
-            <span class="login-current-avatar">${this.renderAvatarHtml(this.currentUser)}</span>
-            <div>
-              <div class="login-current-label">Hozirgi profil</div>
-              <strong>${escapeHtml(cleanCurName)}</strong>
-            </div>
-          </div>
-          <div class="login-current-actions">
-            <button type="button" class="btn btn-primary btn-sm" id="login-back-btn" onclick="AuthManager.hideLoginScreen()">↩️ Qaytish</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="login-logout-btn" onclick="AuthManager.logout()">🚪 Chiqish</button>
-          </div>
-        </div>
-      `;
-    }
-
-    html += `
+    let html = `
       <div class="auth-tabs-nav">
         <button type="button" id="auth-tab-login" class="auth-tab-btn ${this.activeTab === 'login' ? 'active' : ''}" onclick="AuthManager.setAuthTab('login')">
-          🔑 Login
+          🔑 Parol bilan kirish
         </button>
         <button type="button" id="auth-tab-telegram" class="auth-tab-btn ${this.activeTab === 'telegram' ? 'active' : ''}" onclick="AuthManager.setAuthTab('telegram')">
           ✈️ Telegram orqali
@@ -269,10 +305,10 @@ const AuthManager = {
       html += `
         <form class="login-form" id="login-form" onsubmit="event.preventDefault(); AuthManager.submitLogin();" autocomplete="on">
           <div class="login-field">
-            <label for="login-username">Login</label>
+            <label for="login-username">Login yoki Telegram username</label>
             <div class="login-input-wrap">
               <span class="login-input-icon">👤</span>
-              <input type="text" id="login-username" class="form-input" placeholder="Login yoki Telegram username" autocomplete="username" required>
+              <input type="text" id="login-username" class="form-input" placeholder="masalan: admin yoki @mrqambarov" autocomplete="username" required>
             </div>
           </div>
 
@@ -280,16 +316,35 @@ const AuthManager = {
             <label for="login-password">Parol</label>
             <div class="login-input-wrap">
               <span class="login-input-icon">🔒</span>
-              <input type="password" id="login-password" class="form-input" placeholder="••••••" autocomplete="current-password" required>
-              <button type="button" class="login-eye-btn" id="login-toggle-password" onclick="AuthManager.togglePassword()" title="Parolni ko‘rsatish">👁</button>
+              <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="login-eye-btn" id="login-toggle-password" onclick="AuthManager.togglePassword()" title="Parolni ko‘rsatish">👁️</button>
             </div>
           </div>
 
-          <div id="login-error" class="login-error" style="display:none;"></div>
+          <div class="login-remember-row">
+            <label class="login-remember-label">
+              <input type="checkbox" id="login-remember-me" checked>
+              <span>Meni eslab qolish (7 kun)</span>
+            </label>
+            <a href="javascript:void(0)" class="login-forgot-link" onclick="AuthManager.setAuthTab('telegram')">
+              Parolni unutdingizmi?
+            </a>
+          </div>
+
+          <div id="login-error" class="login-error" style="${errMsg ? 'display:flex;' : 'display:none;'}">
+            <span>⚠️</span>
+            <span id="login-error-text">${escapeHtml(errMsg)}</span>
+          </div>
 
           <button type="submit" class="btn btn-primary login-submit-btn" id="login-submit-btn">
-            Tizimga kirish
+            <span>Tizimga kirish</span>
+            <span style="font-size: 1.1rem; line-height: 1;">➔</span>
           </button>
+
+          <div class="login-security-badge">
+            <span>🔒</span>
+            <span>256-bit shifrlangan xavfsiz seans • IntelliDay Security v3.5</span>
+          </div>
         </form>
       `;
     } else {
@@ -297,23 +352,33 @@ const AuthManager = {
         <div class="login-tg-panel">
           <div class="login-tg-icon">✈️</div>
           <p class="login-tg-text">
-            Telegram akkauntingiz orqali bir bosishda kiring. Bot ochiladi — <b>START</b> tugmasini bosing va shu sahifaga qayting.
+            Telegram orqali 1-klikda xavfsiz kiring yoki botdan 6 xonali bir martalik kod oling.
           </p>
 
           <button type="button" class="btn login-tg-btn" id="login-tg-start-btn" onclick="AuthManager.startTelegramLogin()">
-            ✈️ Telegram orqali kirish
+            <span>✈️ Telegram botda 1-bosishda tasdiqlash</span>
           </button>
 
           <div id="login-tg-status" class="login-tg-status"></div>
 
-          <div class="login-divider"><span>yoki botdan olingan kod bilan</span></div>
+          <div class="login-divider"><span>yoki 6 xonali bir martalik kod bilan</span></div>
 
           <form class="login-code-row" onsubmit="event.preventDefault(); AuthManager.submitTgCodeLogin();">
-            <input type="text" id="tg-code-input" class="form-input login-code-input" placeholder="123456" maxlength="32" autocomplete="one-time-code">
-            <button type="submit" class="btn btn-secondary" id="login-tg-code-btn">Kirish</button>
+            <input type="text" id="tg-code-input" class="form-input login-code-input" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="one-time-code" oninput="AuthManager.handleCodeInput(this)">
+            <button type="submit" class="btn btn-secondary" id="login-tg-code-btn">Kirish ➔</button>
           </form>
-          <div class="login-tg-hint">Botga <code>/login</code> deb yozing — 6 xonali kod keladi.</div>
-          <div id="login-error" class="login-error" style="display:none;"></div>
+
+          <div class="login-tg-hint">💡 Botga <code>/login</code> deb yozsangiz, darhol 6 xonali kirish kodi keladi.</div>
+
+          <div id="login-error" class="login-error" style="${errMsg ? 'display:flex; margin-top:0.75rem;' : 'display:none;'}">
+            <span>⚠️</span>
+            <span id="login-error-text">${escapeHtml(errMsg)}</span>
+          </div>
+
+          <div class="login-security-badge">
+            <span>🛡️</span>
+            <span>Telegram orqali ikki bosqichli xavfsiz avtorizatsiya</span>
+          </div>
         </div>
       `;
     }
@@ -322,25 +387,49 @@ const AuthManager = {
 
     setTimeout(() => {
       const first = document.getElementById(this.activeTab === 'login' ? 'login-username' : 'tg-code-input');
-      if (first && this.activeTab === 'login') first.focus();
+      if (first) first.focus();
     }, 50);
+  },
+
+  handleCodeInput(input) {
+    const val = input.value.replace(/\D/g, '').slice(0, 6);
+    input.value = val;
+    if (val.length === 6) {
+      this.submitTgCodeLogin();
+    }
   },
 
   togglePassword() {
     const inp = document.getElementById('login-password');
-    if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+    const btn = document.getElementById('login-toggle-password');
+    if (inp) {
+      const isPass = inp.type === 'password';
+      inp.type = isPass ? 'text' : 'password';
+      if (btn) btn.textContent = isPass ? '🙈' : '👁️';
+    }
   },
 
   showLoginError(msg) {
     const el = document.getElementById('login-error');
+    const textEl = document.getElementById('login-error-text');
     if (!el) return;
-    el.textContent = msg;
-    el.style.display = msg ? 'block' : 'none';
+    if (msg) {
+      if (textEl) textEl.textContent = msg;
+      else el.textContent = msg;
+      el.style.display = 'flex';
+      // Trigger shake animation
+      el.classList.remove('shake');
+      void el.offsetWidth;
+      el.classList.add('shake');
+    } else {
+      el.style.display = 'none';
+    }
   },
 
   async submitLogin() {
     const login = (document.getElementById('login-username')?.value || '').trim();
     const password = document.getElementById('login-password')?.value || '';
+    const rememberMe = !!document.getElementById('login-remember-me')?.checked;
     const btn = document.getElementById('login-submit-btn');
 
     if (!login || !password) {
@@ -349,26 +438,32 @@ const AuthManager = {
     }
 
     this.showLoginError('');
-    if (btn) { btn.disabled = true; btn.textContent = 'Tekshirilmoqda...'; }
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="login-spinner"></span> Tekshirilmoqda...';
+    }
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password })
+        body: JSON.stringify({ login, password, rememberMe })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        this.completeLogin(data.user, data.token);
+        this.completeLogin(data.user, data.token, data.expiresAt);
       } else {
         this.showLoginError(data.error || 'Login yoki parol noto‘g‘ri');
         const p = document.getElementById('login-password');
         if (p) { p.value = ''; p.focus(); }
       }
     } catch (e) {
-      this.showLoginError('Server bilan aloqa yo‘q');
+      this.showLoginError('Server bilan aloqa yo‘q. Tarmoqni tekshiring.');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Tizimga kirish'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Tizimga kirish</span> <span style="font-size:1.1rem; line-height:1;">➔</span>';
+      }
     }
   },
 
@@ -377,7 +472,6 @@ const AuthManager = {
     const statusEl = document.getElementById('login-tg-status');
     this.showLoginError('');
 
-    // Popup bloklanmasligi uchun oynani darhol ochamiz
     const tgWindow = window.open('about:blank', '_blank');
 
     try {
@@ -390,9 +484,14 @@ const AuthManager = {
 
       if (statusEl) {
         statusEl.innerHTML = `
-          <span class="login-spinner"></span>
-          Telegramda <b>@${escapeHtml(data.botUsername)}</b> botida <b>START</b> tugmasini bosing...
-          <div style="margin-top:0.4rem;"><a href="${data.url}" target="_blank" rel="noopener">Bot ochilmadimi? Shu yerni bosing</a></div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:0.35rem;">
+            <span class="login-spinner"></span>
+            <strong>Botda START tugmasini bosing</strong>
+          </div>
+          <div>Qolgan vaqt: <b id="login-tg-countdown" style="color:var(--accent-cyan); font-family:monospace;">10:00</b></div>
+          <div style="margin-top:0.45rem; font-size:0.78rem;">
+            <a href="${data.url}" target="_blank" rel="noopener">Bot ochilmadimi? Shu yerni bosing</a>
+          </div>
         `;
       }
       this.pollTelegramLogin(data.code);
@@ -406,12 +505,25 @@ const AuthManager = {
     this.stopTelegramPolling();
     this.tgPollCode = code;
     const startedAt = Date.now();
+    const durationMs = 10 * 60 * 1000;
+
+    const updateCountdown = () => {
+      const remainingMs = Math.max(0, durationMs - (Date.now() - startedAt));
+      const mins = Math.floor(remainingMs / 60000);
+      const secs = Math.floor((remainingMs % 60000) / 1000);
+      const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const timeEl = document.getElementById('login-tg-countdown');
+      if (timeEl) timeEl.textContent = timeStr;
+    };
+
+    updateCountdown();
+    this.tgCountdownTimer = setInterval(updateCountdown, 1000);
 
     this.tgPollTimer = setInterval(async () => {
-      if (Date.now() - startedAt > 10 * 60000) {
+      if (Date.now() - startedAt > durationMs) {
         this.stopTelegramPolling();
         const s = document.getElementById('login-tg-status');
-        if (s) s.innerHTML = 'Vaqt tugadi. Qaytadan urinib ko‘ring.';
+        if (s) s.innerHTML = '<span style="color:#f43f5e;">⌛ Vaqt tugadi. Qaytadan urinib ko‘ring.</span>';
         return;
       }
       try {
@@ -419,11 +531,11 @@ const AuthManager = {
         const data = await res.json();
         if (data.success && data.user) {
           this.stopTelegramPolling();
-          this.completeLogin(data.user, data.token);
+          this.completeLogin(data.user, data.token, data.expiresAt);
         } else if (data.status === 'expired') {
           this.stopTelegramPolling();
           const s = document.getElementById('login-tg-status');
-          if (s) s.innerHTML = 'Havola eskirdi. Qaytadan bosing.';
+          if (s) s.innerHTML = '<span style="color:#f43f5e;">⌛ Havola eskirgan. Qaytadan bosing.</span>';
         }
       } catch (e) {}
     }, 2000);
@@ -431,14 +543,16 @@ const AuthManager = {
 
   stopTelegramPolling() {
     if (this.tgPollTimer) clearInterval(this.tgPollTimer);
+    if (this.tgCountdownTimer) clearInterval(this.tgCountdownTimer);
     this.tgPollTimer = null;
+    this.tgCountdownTimer = null;
     this.tgPollCode = null;
   },
 
   async submitTgCodeLogin() {
     const code = (document.getElementById('tg-code-input')?.value || '').trim();
     if (!code || code.length < 4) {
-      this.showLoginError('Kodni kiriting');
+      this.showLoginError('6 xonali kodni kiriting');
       return;
     }
     const ok = await this.loginWithCode(code);
@@ -454,21 +568,68 @@ const AuthManager = {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        this.completeLogin(data.user, data.token);
+        this.completeLogin(data.user, data.token, data.expiresAt);
         return true;
       }
     } catch (e) {}
     return false;
   },
 
-  completeLogin(user, token) {
+  completeLogin(user, token, expiresAt) {
+    this.sessionToken = token;
+    this.sessionExpiresAt = expiresAt;
     this.setUserSession(user, token);
     this.hideLoginScreen();
+    this.startHeartbeat();
+
     if (window.App && typeof window.App.showToast === 'function') {
       window.App.showToast(`🎉 Xush kelibsiz, ${user.name}!`);
     }
     if (window.NotificationManager && window.NotificationManager.sound && window.NotificationManager.sound.playTone) {
       try { window.NotificationManager.sound.playTone('chime'); } catch (e) {}
+    }
+  },
+
+  startHeartbeat() {
+    this.stopHeartbeat();
+    // Har 5 daqiqada faol sessiyani serverda yangilash (keep-alive)
+    this.heartbeatTimer = setInterval(async () => {
+      if (!this.currentUser || !this.sessionToken) {
+        this.stopHeartbeat();
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/session', {
+          headers: { 'Authorization': 'Bearer ' + this.sessionToken }
+        });
+        if (!res.ok) {
+          // Server 401 qaytardi (sessiya tugagan yoki bekor qilingan)
+          this.handleSessionExpired();
+          return;
+        }
+        const data = await res.json();
+        if (data.expiresAt) this.sessionExpiresAt = data.expiresAt;
+      } catch (e) {
+        // Tarmoq xatoligi bo'lsa darhol uzmaymiz
+      }
+    }, 5 * 60 * 1000);
+  },
+
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  },
+
+  handleSessionExpired() {
+    this.stopHeartbeat();
+    this.clearSession(false);
+    this.renderHeaderProfile();
+    window.history.replaceState(null, document.title, window.location.pathname);
+    this.showLoginScreen(false, '⚠️ Xavfsizlik: Sessiyangiz muddati tugadi. Iltimos, qaytadan tizimga kiring.');
+    if (window.App && typeof window.App.showToast === 'function') {
+      window.App.showToast('⚠️ Sessiya muddati tugadi. Qaytadan kiring.', 4000);
     }
   },
 
@@ -490,18 +651,36 @@ const AuthManager = {
     }
   },
 
-  clearSession() {
+  async clearSession(notifyServer = true) {
+    const token = this.sessionToken || localStorage.getItem('intelliday_auth_token_v1');
+    if (notifyServer && token) {
+      try {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
     localStorage.removeItem('intelliday_auth_user_v1');
     localStorage.removeItem('intelliday_auth_token_v1');
-    sessionStorage.removeItem('intelliday_session_started');
+    localStorage.removeItem('intelliday_auth_session_v1');
+    sessionStorage.clear();
+
     this.currentUser = null;
+    this.sessionToken = null;
+    this.sessionExpiresAt = null;
+    this.stopHeartbeat();
+    this.stopTelegramPolling();
   },
 
-  logout() {
-    this.clearSession();
+  async logout() {
+    await this.clearSession(true);
     this.renderHeaderProfile();
     this.activeTab = 'login';
-    this.showLoginScreen(false);
+    window.history.replaceState(null, document.title, window.location.pathname);
+    this.showLoginScreen(false, '👋 Tizimdan muvaffaqiyatli chiqildi');
   },
 
   // --------------------------------------------------------------------------
@@ -587,7 +766,7 @@ const AuthManager = {
               <span class="pulse-dot ${isBusy ? 'red' : 'green'}"></span>
               <strong>${isBusy ? '🔴 BAND (Ishlayapsiz)' : '🟢 BO‘SH (Yangi vazifaga tayyorsiz)'}</strong>
             </div>
-            <button class="btn btn-secondary btn-icon" onclick="AuthManager.openLoginModal()" title="Boshqa profilga o‘tish">
+            <button class="btn btn-secondary btn-icon" onclick="AuthManager.switchAccount()" title="Boshqa profilga o‘tish">
               🔄
             </button>
           </div>
