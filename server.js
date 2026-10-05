@@ -132,6 +132,17 @@ function saveCorporateDB() {
 const telegramAuthCodes = new Map();
 let cachedBotUsername = '';
 
+function getBotToken() {
+  return (
+    process.env.TELEGRAM_BOT_TOKEN ||
+    process.env.TELEGRAM_TOKEN ||
+    corporateDb.settings?.telegramBotToken ||
+    db.settings?.telegramBotToken ||
+    db.settings?.telegramToken ||
+    ''
+  ).trim();
+}
+
 // --- Active User Sessions & Token Security ---
 corporateDb.sessions = corporateDb.sessions || {};
 
@@ -212,7 +223,7 @@ setInterval(() => {
 
 async function notifyLoginToTelegram(user, method = 'Parol') {
   try {
-    const token = (db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+    const token = getBotToken();
     if (!token || !user || !user.telegramChatId) return;
     const timeStr = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const dateStr = new Date().toLocaleDateString('uz-UZ');
@@ -757,7 +768,7 @@ function resolveStageTargetGroup(stage, order = {}) {
  * - QC / Primera -> Konstruktorlar guruhi
  */
 async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overrides = {}) {
-  const token = (overrides.token || corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+  const token = (overrides.token || getBotToken()).trim();
   if (!token) return { ok: false, error: 'Telegram Bot Token belgilanmagan' };
 
   const routing = resolveStageTargetGroup(stage, order);
@@ -844,7 +855,7 @@ async function broadcastStageToTelegramGroup(order, stage, reason = 'new', overr
  * Broadcasts an entire new order overview to connected groups
  */
 async function broadcastOrderToTelegramGroups(order) {
-  const token = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+  const token = getBotToken();
   if (!token) return;
 
   const firstStage = (order.stages || [])[0];
@@ -854,7 +865,7 @@ async function broadcastOrderToTelegramGroups(order) {
 }
 
 async function startTelegramBotPoller() {
-  const token = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+  const token = getBotToken();
   if (!token) {
     if (botPollingTimeout) clearTimeout(botPollingTimeout);
     botPollingActive = false;
@@ -867,7 +878,7 @@ async function startTelegramBotPoller() {
 
   async function poll() {
     if (!botPollingActive) return;
-    const curToken = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+    const curToken = getBotToken();
     if (!curToken) {
       botPollingActive = false;
       return;
@@ -1127,7 +1138,7 @@ function distributeKesimPlan(items, senderInfo = {}) {
   }
 
   const assignedResults = [];
-  const token = (corporateDb.settings?.telegramBotToken || db.settings.telegramBotToken || db.settings.telegramToken || '').trim();
+  const token = getBotToken();
 
   items.forEach((item, index) => {
     let targetWorker = null;

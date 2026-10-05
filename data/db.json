@@ -158,12 +158,12 @@
     "soundEnabled": true,
     "soundTone": "chime",
     "notificationsEnabled": true,
-    "telegramToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0",
+    "telegramToken": "",
     "telegramChatId": "6972309422",
     "geminiApiKey": "",
     "pomodoroWorkTime": 25,
     "pomodoroBreakTime": 5,
-    "telegramBotToken": "8952605696:AAFs8dV72FBbDMX0jg5lk_8Za8YJTQ59Mz0"
+    "telegramBotToken": ""
   },
   "updatedAt": 1791112112716
 }
