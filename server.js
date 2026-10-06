@@ -79,10 +79,13 @@ let corporateDb = {
   teamMembers: [],
   orders: [],
   settings: {
-    workStartHour: 8.5, // 08:30
-    workEndHour: 17.5,  // 17:30
-    lunchStart: 13.0,   // 13:00
-    lunchEnd: 14.0,     // 14:00
+    workStartHour: 8.0, // 08:00
+    workEndHour: 17 + 10 / 60,  // 17:10
+    lunchStart: 11.0,   // 11:00
+    lunchEnd: 12.0,     // 12:00
+    overtimeStart: 18.0, // 18:00
+    overtimeEnd: 21 + 20 / 60, // 21:20
+    workDays: [1, 2, 3, 4, 5, 6], // Dushanba - Shanba
     delayBufferPercent: 15, // +15% safety buffer for technical corrections
     constructorGroupId: '',
     constructorGroupName: 'Konstruktorlar guruhi',
@@ -377,65 +380,115 @@ function broadcastSSE(type, payload, excludeClient = null) {
 // Smart Workload & Critical Path ETA Calculator
 // ----------------------------------------------------------------------------
 /**
- * Adds working hours to a given start date, respecting work hours, lunch break, and skipping Sundays.
+ * Adds working hours to a given start date, respecting:
+ * - Work hours: 08:00 - 17:10
+ * - Lunch break: 11:00 - 12:00
+ * - Overtime: 18:00 - 21:20 (optional, enabled if includeOvertime = true)
+ * - Work days: Monday - Saturday (Sunday is off unless includeSunday = true)
  */
-function addWorkHours(startDate, hoursToAdd, cfg) {
-  const workStart = cfg.workStartHour || 8.5; // 08:30
-  const workEnd = cfg.workEndHour || 17.5;   // 17:30
-  const lunchStart = cfg.lunchStart || 13.0; // 13:00
-  const lunchEnd = cfg.lunchEnd || 14.0;     // 14:00
+function addWorkHours(startDate, hoursToAdd, cfg = {}) {
+  const workStart = cfg.workStartHour !== undefined ? Number(cfg.workStartHour) : 8.0; // 08:00
+  const workEnd = cfg.workEndHour !== undefined ? Number(cfg.workEndHour) : (17 + 10 / 60); // 17:10
+  const lunchStart = cfg.lunchStart !== undefined ? Number(cfg.lunchStart) : 11.0; // 11:00
+  const lunchEnd = cfg.lunchEnd !== undefined ? Number(cfg.lunchEnd) : 12.0; // 12:00
+  const includeSunday = !!cfg.includeSunday;
+  const includeOvertime = !!cfg.includeOvertime;
+  const overtimeStart = cfg.overtimeStart !== undefined ? Number(cfg.overtimeStart) : 18.0; // 18:00
+  const overtimeEnd = cfg.overtimeEnd !== undefined ? Number(cfg.overtimeEnd) : (21 + 20 / 60); // 21:20
 
   let current = new Date(startDate);
 
-  // If outside working hours, roll forward to next available morning
+  function setHourFraction(dt, hourFraction) {
+    const h = Math.floor(hourFraction);
+    const m = Math.round((hourFraction % 1) * 60);
+    dt.setHours(h, m, 0, 0);
+  }
+
+  function isWorkDay(dt) {
+    if (dt.getDay() === 0) return includeSunday; // 0 = Sunday
+    return true; // Monday to Saturday
+  }
+
   function normalizeToWorkHours(dt) {
-    // If Sunday (0), move to Monday
-    if (dt.getDay() === 0) {
-      dt.setDate(dt.getDate() + 1);
-      dt.setHours(Math.floor(workStart), (workStart % 1) * 60, 0, 0);
+    let loop = 0;
+    while (loop++ < 50) {
+      if (!isWorkDay(dt)) {
+        dt.setDate(dt.getDate() + 1);
+        setHourFraction(dt, workStart);
+        continue;
+      }
+
+      const curHour = dt.getHours() + dt.getMinutes() / 60 + dt.getSeconds() / 3600;
+
+      // Tonggi ish boshlanishidan oldin
+      if (curHour < workStart) {
+        setHourFraction(dt, workStart);
+        return;
+      }
+
+      // Tushlik paytida (11:00 - 12:00)
+      if (curHour >= lunchStart && curHour < lunchEnd) {
+        setHourFraction(dt, lunchEnd);
+        return;
+      }
+
+      // Asosiy ish vaqti tugaganidan keyin
+      if (curHour >= workEnd) {
+        if (includeOvertime) {
+          if (curHour < overtimeStart) {
+            // 17:10 dan 18:00 gacha tanaffus -> 18:00 ga
+            setHourFraction(dt, overtimeStart);
+            return;
+          } else if (curHour >= overtimeEnd) {
+            // 21:20 dan keyin -> ertasi kuni 08:00 ga
+            dt.setDate(dt.getDate() + 1);
+            setHourFraction(dt, workStart);
+            continue;
+          }
+          return;
+        } else {
+          // Overtime yo'q -> ertasi kuni 08:00 ga
+          dt.setDate(dt.getDate() + 1);
+          setHourFraction(dt, workStart);
+          continue;
+        }
+      }
+
       return;
-    }
-    const curHour = dt.getHours() + dt.getMinutes() / 60;
-    if (curHour < workStart) {
-      dt.setHours(Math.floor(workStart), (workStart % 1) * 60, 0, 0);
-    } else if (curHour >= workEnd) {
-      // Move to next day
-      dt.setDate(dt.getDate() + 1);
-      dt.setHours(Math.floor(workStart), (workStart % 1) * 60, 0, 0);
-      normalizeToWorkHours(dt);
-    } else if (curHour >= lunchStart && curHour < lunchEnd) {
-      dt.setHours(Math.floor(lunchEnd), (lunchEnd % 1) * 60, 0, 0);
     }
   }
 
   normalizeToWorkHours(current);
 
   let remaining = hoursToAdd;
-  while (remaining > 0.001) {
+  let safety = 0;
+  while (remaining > 0.0001 && safety++ < 1000) {
     normalizeToWorkHours(current);
-    const curHour = current.getHours() + current.getMinutes() / 60;
+    const curHour = current.getHours() + current.getMinutes() / 60 + current.getSeconds() / 3600;
 
-    let availableUntil = lunchStart;
-    if (curHour >= lunchEnd) {
-      availableUntil = workEnd;
-    } else if (curHour >= lunchStart && curHour < lunchEnd) {
-      current.setHours(Math.floor(lunchEnd), (lunchEnd % 1) * 60, 0, 0);
-      continue;
+    let chunkEnd = workEnd;
+    if (curHour < lunchStart) {
+      chunkEnd = lunchStart;
+    } else if (curHour >= lunchEnd && curHour < workEnd) {
+      chunkEnd = workEnd;
+    } else if (includeOvertime && curHour >= overtimeStart && curHour < overtimeEnd) {
+      chunkEnd = overtimeEnd;
     }
 
-    const availableHoursInChunk = Math.max(0, availableUntil - curHour);
-    if (availableHoursInChunk <= 0) {
+    const availableHoursInChunk = Math.max(0, chunkEnd - curHour);
+    if (availableHoursInChunk <= 0.0001) {
+      current.setMinutes(current.getMinutes() + 1);
       normalizeToWorkHours(current);
       continue;
     }
 
     if (remaining <= availableHoursInChunk) {
       const finishHour = curHour + remaining;
-      current.setHours(Math.floor(finishHour), Math.round((finishHour % 1) * 60), 0, 0);
+      setHourFraction(current, finishHour);
       remaining = 0;
     } else {
       remaining -= availableHoursInChunk;
-      current.setHours(Math.floor(availableUntil), Math.round((availableUntil % 1) * 60), 0, 0);
+      setHourFraction(current, chunkEnd);
       normalizeToWorkHours(current);
     }
   }
@@ -444,17 +497,26 @@ function addWorkHours(startDate, hoursToAdd, cfg) {
 }
 
 /**
- * Calculates complete lead time, bottleneck analysis, and human explanation
+ * Calculates complete lead time, bottleneck analysis, target deadline comparison, and human explanation
  */
-function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
+function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers, options = {}) {
   const settings = {
-    workStartHour: 8.5,
-    workEndHour: 17.5,
-    lunchStart: 13.0,
-    lunchEnd: 14.0,
+    workStartHour: 8.0, // 08:00
+    workEndHour: 17 + 10 / 60, // 17:10
+    lunchStart: 11.0, // 11:00
+    lunchEnd: 12.0, // 12:00
+    overtimeStart: 18.0, // 18:00
+    overtimeEnd: 21 + 20 / 60, // 21:20
     delayBufferPercent: 15,
-    ...cfg
+    ...cfg,
+    ...options
   };
+
+  const targetDeadline = options.targetDeadline || cfg.targetDeadline || null;
+  const includeSunday = !!(options.includeSunday !== undefined ? options.includeSunday : cfg.includeSunday);
+  const includeOvertime = !!(options.includeOvertime !== undefined ? options.includeOvertime : cfg.includeOvertime);
+  settings.includeSunday = includeSunday;
+  settings.includeOvertime = includeOvertime;
 
   const now = new Date();
 
@@ -557,11 +619,53 @@ function calculateOrderSchedule(stages, currentOrders, cfg, teamMembers) {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
   });
 
+  // 4. Target Deadline Comparison
+  let deadlineComparison = null;
+  if (targetDeadline) {
+    const targetDt = new Date(targetDeadline);
+    const etaDt = new Date(finalETA);
+    const diffMs = targetDt.getTime() - etaDt.getTime();
+    const diffMinutes = Math.round(diffMs / 60000);
+    const isLate = diffMinutes < 0;
+    const absM = Math.abs(diffMinutes);
+    const days = Math.floor(absM / 1440);
+    const hours = Math.floor((absM % 1440) / 60);
+    const mins = absM % 60;
+
+    let timeDiffText = '';
+    if (days > 0) timeDiffText += `${days} kun `;
+    if (hours > 0) timeDiffText += `${hours} soat `;
+    if (mins > 0 || timeDiffText === '') timeDiffText += `${mins} daqiqa`;
+
+    deadlineComparison = {
+      targetDeadline: targetDt.toISOString(),
+      targetDeadlineFormatted: targetDt.toLocaleDateString('uz-UZ', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+      }),
+      isLate,
+      diffMinutes,
+      timeDiffText: timeDiffText.trim(),
+      status: isLate ? 'delayed' : 'on_time',
+      message: isLate 
+        ? `⚠️ Diqqat: Mijoz belgilagan muddatdan ${timeDiffText.trim()} kechikmoqda!` 
+        : `✅ Ajoyib! Mijoz belgilagan muddatdan ${timeDiffText.trim()} oldin tayyor bo‘ladi.`
+    };
+  }
+
   return {
     stagesTimeline,
     finalETA,
     finalETAFormatted: etaFormatted,
     explanation,
+    deadlineComparison,
+    workScheduleMeta: {
+      workHours: '08:00 – 17:10',
+      lunchTime: '11:00 – 12:00',
+      workDays: includeSunday ? 'Dushanba – Yakshanba (7 kun)' : 'Dushanba – Shanba (Yakshanba dam olish)',
+      includeSunday,
+      includeOvertime,
+      overtimeHours: includeOvertime ? '18:00 – 21:20' : 'O‘chirilgan'
+    },
     calculatedAt: new Date().toISOString()
   };
 }
@@ -3009,12 +3113,17 @@ const server = http.createServer((req, res) => {
     req.on('data', c => body += c);
     req.on('end', () => {
       try {
-        const { stages, targetDeadline } = JSON.parse(body || '{}');
+        const { stages, targetDeadline, includeSunday, includeOvertime } = JSON.parse(body || '{}');
         const calc = calculateOrderSchedule(
           stages || [], 
           corporateDb.orders, 
           corporateDb.settings, 
-          corporateDb.teamMembers
+          corporateDb.teamMembers,
+          {
+            targetDeadline: targetDeadline || null,
+            includeSunday: !!includeSunday,
+            includeOvertime: !!includeOvertime
+          }
         );
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: true, ...calc }));
@@ -3039,13 +3148,22 @@ const server = http.createServer((req, res) => {
           orderData.stages || [], 
           corporateDb.orders.filter(o => o.id !== orderData.id),
           corporateDb.settings,
-          corporateDb.teamMembers
+          corporateDb.teamMembers,
+          {
+            targetDeadline: orderData.targetDeadline || null,
+            includeSunday: !!orderData.includeSunday,
+            includeOvertime: !!orderData.includeOvertime
+          }
         );
 
         orderData.stages = schedule.stagesTimeline;
         orderData.calculatedETA = schedule.finalETA;
         orderData.calculatedETAFormatted = schedule.finalETAFormatted;
         orderData.explanation = schedule.explanation;
+        orderData.deadlineComparison = schedule.deadlineComparison;
+        orderData.targetDeadline = orderData.targetDeadline || null;
+        orderData.includeSunday = !!orderData.includeSunday;
+        orderData.includeOvertime = !!orderData.includeOvertime;
 
         if (!orderData.id) {
           orderData.id = 'ord_' + Date.now();

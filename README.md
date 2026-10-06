@@ -65,8 +65,10 @@ Yuqori headerdagi **`🏢 Modelxona Rejimi`** tugmasini bosish orqali korporativ
 * **Algoritm qanday hisoblaydi?**
   * Tizim biriktirilayotgan xodimning qo‘lida ayni paytda qanday ishlar borligini tekshiradi!
   * Oldingi barcha navbatdagi ishlarning qolgan soatlarini yig‘adi.
-  * Korxonaning ish vaqtini (08:30 dan 17:30 gacha), tushlik tanaffusini (13:00–14:00) va dam olish kunlarini hisobga oladi.
-  * Texnik tuzatishlar uchun **+15% xavfsizlik buferini** qo‘shadi.
+  * Korxonaning asosiy ish vaqtini (08:00 dan 17:10 gacha), tushlik (abet) tanaffusini (11:00–12:00) va ish kunlarini (Dushanba–Shanba) hisobga oladi.
+  * Shoshilinch zakazlar uchun **Yakshanba kunini ish kuni qilish** va **Qo‘shimcha smena (18:00–21:20)** parametrlarini qo‘llash imkoniyati mavjud.
+  * **Mijoz tomonidan so‘ralgan muddat (Dedlayn)** bilan solishtirib, ulgurish yoki kechikish xavfini darhol tahlil qiladi.
+  * Texnik tuzatishlar va kutilmagan holatlar uchun **+15% xavfsizlik buferini** qo‘shadi.
   * Natijada buyurtmachi va rahbariyatga aytishingiz mumkin bo‘lgan **ANIQ TAYYOR BO‘LISH SANASI VA SOATINI (ETA)** chiqarib beradi:
     > *«Dilnoza andazani 05-Oktabr 10:00 da boshlab, 15:30 da tayyorlaydi. Malika chevar oldingi kostyumni topshirgach, ushbu modelni 06-Oktabr 10:40 da boshlaydi va 07-Oktabr 09:56 da to‘liq tikib topshiradi. Buyurtmachiga aytish muddati: 07-Oktabr soat 10:00.»*
 

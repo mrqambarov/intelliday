@@ -246,6 +246,25 @@ const CorporateManager = {
                 <h3 style="margin: 0; font-size: 1.05rem; color: #fff;">${escapeHtml(ord.title)}</h3>
               </div>
               <span style="font-size: 0.78rem; color: var(--text-muted);">Mijoz / Bo‘lim: <strong>${escapeHtml(ord.clientOrDept || 'Ichki buyurtma')}</strong></span>
+              
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem;">
+                ${ord.targetDeadline ? `
+                  <span class="calc-sum-chip" style="background: ${ord.calculatedETA && (new Date(ord.calculatedETA) > new Date(ord.targetDeadline)) ? 'rgba(239,68,68,0.18)' : 'rgba(16,185,129,0.18)'}; border: 1px solid ${ord.calculatedETA && (new Date(ord.calculatedETA) > new Date(ord.targetDeadline)) ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}; color: ${ord.calculatedETA && (new Date(ord.calculatedETA) > new Date(ord.targetDeadline)) ? '#fca5a5' : '#86efac'};">
+                    🎯 Mijoz muddati: ${new Date(ord.targetDeadline).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} ${ord.calculatedETA && (new Date(ord.calculatedETA) > new Date(ord.targetDeadline)) ? '⚠️' : '✓'}
+                  </span>
+                ` : ''}
+                ${ord.includeSunday ? `
+                  <span class="calc-sum-chip" style="background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.35); color: var(--accent-cyan);">
+                    🚨 Yakshanba: Ish
+                  </span>
+                ` : ''}
+                ${ord.includeOvertime ? `
+                  <span class="calc-sum-chip" style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35); color: #fbbf24;">
+                    🌙 Qo‘shimcha smena (18:00–21:20)
+                  </span>
+                ` : ''}
+              </div>
+
               ${Array.isArray(ord.models) && ord.models.length ? `
                 <div class="order-models-line">
                   <span class="calc-sum-chip">👗 ${ord.models.length} ta model</span>
@@ -432,7 +451,7 @@ const CorporateManager = {
         if (isMinute) {
           // Soatdan minutga o'tkazish
           input.value = Math.max(1, Math.round(currentVal * 60));
-          input.step = '5';
+          input.step = '1';
           input.min = '1';
           input.max = '6000';
         } else {
@@ -468,7 +487,7 @@ const CorporateManager = {
 
     const isMinute = this.calcTimeUnit !== 'hour';
     const displayVal = isMinute ? minutes : parseFloat((minutes / 60).toFixed(2));
-    const stepVal = isMinute ? '5' : '0.1';
+    const stepVal = isMinute ? '1' : '0.1';
     const minVal = isMinute ? '1' : '0.05';
     const maxVal = isMinute ? '6000' : '100';
     const unitText = isMinute ? 'daqiqa' : 'soat';
@@ -673,6 +692,62 @@ const CorporateManager = {
                 <option value="high">🔴 Yuqori (Shoshilinch navbat)</option>
                 <option value="low">🟢 Qulay (Ixtiyoriy)</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Mijoz so'ragan muddat (Dedlayn) -->
+          <div class="form-row-2" style="background: rgba(255,255,255,0.02); padding: 0.75rem 0.85rem; border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); margin-bottom: 0.75rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>🎯 Mijoz tomonidan so‘ralgan muddat (Dedlayn):</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">(Ixtiyoriy)</span>
+              </label>
+              <input type="datetime-local" id="calc-deadline" class="form-input" onchange="CorporateManager.livePreviewETA()">
+            </div>
+            <div style="font-size: 0.76rem; color: var(--text-secondary); display: flex; align-items: center; line-height: 1.45; padding-top: 0.85rem;">
+              ℹ️ Agar mijoz aniq sana/vaqt so‘ragan bo‘lsa kiriting. Tizim ETA hisoblab, ulgurish yoki kechikish xavfini darhol tahlil qiladi.
+            </div>
+          </div>
+
+          <!-- Ish grafigi va Maxsus rejimlari (Yakshanba & Qo'shimcha smena) -->
+          <div class="calc-work-options-box" style="margin: 0.85rem 0 1.25rem; padding: 0.9rem 1rem; background: rgba(6, 182, 212, 0.04); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: var(--radius-md);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="font-size: 0.88rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 0.4rem;">
+                <span>⏰ Korxona Ish Grafigi & Maxsus Rejimlar</span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--accent-cyan); background: rgba(6,182,212,0.1); padding: 0.25rem 0.65rem; border-radius: 12px; border: 1px solid rgba(6,182,212,0.25);">
+                🏢 Standart: <strong>08:00 – 17:10</strong> | ☕ Abet: <strong>11:00 – 12:00</strong> | Dush – Shanba
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem;">
+              
+              <!-- Option 1: Sunday Work Mode -->
+              <label class="calc-mode-card" style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0.85rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); cursor: pointer; user-select: none;">
+                <input type="checkbox" id="calc-opt-sunday" style="margin-top: 3px; accent-color: var(--accent-cyan); width: 18px; height: 18px; cursor: pointer;" onchange="CorporateManager.livePreviewETA()">
+                <div>
+                  <div style="font-size: 0.84rem; font-weight: 600; color: #fff;">
+                    🚨 Yakshanba kuni ham ishlash rejimi
+                  </div>
+                  <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">
+                    Zarur zakazlar uchun yakshanbani to‘liq ish kuni deb hisoblash va muddatni tezlashtirish.
+                  </div>
+                </div>
+              </label>
+
+              <!-- Option 2: Overtime Shift -->
+              <label class="calc-mode-card" style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0.85rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); cursor: pointer; user-select: none;">
+                <input type="checkbox" id="calc-opt-overtime" style="margin-top: 3px; accent-color: #f59e0b; width: 18px; height: 18px; cursor: pointer;" onchange="CorporateManager.livePreviewETA()">
+                <div>
+                  <div style="font-size: 0.84rem; font-weight: 600; color: #fff;">
+                    🌙 Qo‘shimcha smena (18:00 – 21:20)
+                  </div>
+                  <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">
+                    Ulgurmagan taqdirda kechki vaqtda +3 soat 20 daqiqa qo‘shimcha ish tashkillash.
+                  </div>
+                </div>
+              </label>
+
             </div>
           </div>
 
@@ -924,22 +999,59 @@ const CorporateManager = {
 
     if (!resultBox || !etaTextEl) return;
 
+    const targetDeadline = document.getElementById('calc-deadline')?.value || null;
+    const includeSunday = !!document.getElementById('calc-opt-sunday')?.checked;
+    const includeOvertime = !!document.getElementById('calc-opt-overtime')?.checked;
+
     try {
       const res = await fetch('/api/corporate/calculate-eta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stages })
+        body: JSON.stringify({ stages, targetDeadline, includeSunday, includeOvertime })
       });
 
       if (res.ok) {
         const data = await res.json();
         etaTextEl.textContent = data.finalETAFormatted || 'Aniqlanmadi';
+
+        let deadlineHtml = '';
+        if (data.deadlineComparison) {
+          const dc = data.deadlineComparison;
+          const isLate = dc.isLate;
+          deadlineHtml = `
+            <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); background: ${isLate ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)'}; border: 1px solid ${isLate ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'};">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: ${isLate ? '#fca5a5' : '#86efac'};">
+                  ${escapeHtml(dc.message)}
+                </span>
+                <span style="font-size: 0.75rem; color: #fff; background: rgba(0,0,0,0.25); padding: 0.2rem 0.5rem; border-radius: 4px;">
+                  Mijoz muddati: ${escapeHtml(dc.targetDeadlineFormatted)}
+                </span>
+              </div>
+              ${isLate ? `
+                <div style="font-size: 0.74rem; color: #fecaca; margin-top: 4px;">
+                  💡 Maslahat: Yuqoridagi "Qo‘shimcha smena (18:00–21:20)" yoki "Yakshanba kuni ham ishlash" parametrlarini yoqib, muddatga ulgurishni tekshiring!
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }
+
+        const meta = data.workScheduleMeta || {};
+        const sundayTxt = meta.includeSunday ? '🚨 Yakshanba: ISH KUNI' : 'Yakshanba: Dam olish';
+        const overtimeTxt = meta.includeOvertime ? '🌙 Qo‘shimcha smena: 18:00–21:20 (faol)' : 'Qo‘shimcha smena: o‘chirilgan';
+
         detailsEl.innerHTML = `
-          <div style="line-height: 1.6; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+          ${deadlineHtml}
+          <div style="line-height: 1.6; margin-top: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
             ${data.explanation.replace(/\n/g, '<br>')}
           </div>
-          <div style="margin-top: 0.5rem; font-size: 0.78rem; color: var(--accent-emerald);">
-            ✓ +15% texnik kechikish va tanaffus buferi qo‘shildi. Shanba/yakshanba va tushlik (13:00-14:00) hisobga olindi.
+          <div style="margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.08); font-size: 0.78rem; color: var(--accent-cyan); display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;">
+            <span>🏢 Ish vaqti: <strong>08:00 – 17:10</strong></span>
+            <span>☕ Tushlik: <strong>11:00 – 12:00</strong></span>
+            <span>📅 ${sundayTxt}</span>
+            <span>⚡ ${overtimeTxt}</span>
+            <span style="color: var(--accent-emerald);">✓ +15% texnik bufer hisobga olindi</span>
           </div>
         `;
       }
@@ -960,6 +1072,9 @@ const CorporateManager = {
     if (!title || stages.length === 0) return;
 
     const { models, modelCount, totalPieces } = this.collectModelsFromForm();
+    const targetDeadline = document.getElementById('calc-deadline')?.value || null;
+    const includeSunday = !!document.getElementById('calc-opt-sunday')?.checked;
+    const includeOvertime = !!document.getElementById('calc-opt-overtime')?.checked;
 
     const payload = {
       title,
@@ -967,6 +1082,9 @@ const CorporateManager = {
       clientOrDept,
       priority,
       notes,
+      targetDeadline,
+      includeSunday,
+      includeOvertime,
       models,
       modelCount,
       totalPieces,

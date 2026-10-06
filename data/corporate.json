@@ -788,10 +788,10 @@
     }
   ],
   "settings": {
-    "workStartHour": 8.5,
-    "workEndHour": 17.5,
-    "lunchStart": 13,
-    "lunchEnd": 14,
+    "workStartHour": 8,
+    "workEndHour": 17.166666666666668,
+    "lunchStart": 11,
+    "lunchEnd": 12,
     "delayBufferPercent": 15,
     "constructorGroupId": "-1003004877945",
     "constructorGroupName": "Konstruktorlar",
@@ -815,6 +815,16 @@
         "type": "supergroup",
         "lastActive": 1791104121254
       }
+    ],
+    "overtimeStart": 18,
+    "overtimeEnd": 21.333333333333332,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
     ]
   },
   "updatedAt": 1791112562204,
